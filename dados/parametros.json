@@ -1,0 +1,20 @@
+{
+  "_leia_me": "Alíquotas em %. null = ainda não definida oficialmente (alíquota de referência fixada pelo Senado). Atualize conforme publicação oficial e registre a fonte.",
+  "anos": {
+    "2026": {
+      "cbs": 0.9, "ibs_uf": 0.1, "ibs_mun": 0.0,
+      "fonte": "LC 214/2025 — ano de teste",
+      "observacao": "Ano de teste: valores destacados na nota e compensáveis com PIS/COFINS; em regra não aumentam a carga."
+    },
+    "2027": {
+      "cbs": null, "ibs_uf": 0.05, "ibs_mun": 0.05,
+      "fonte": "LC 214/2025 — CBS plena; PIS/COFINS extintos; IPI zerado (exceto ZFM)",
+      "observacao": "Preencher a CBS quando a alíquota de referência for publicada."
+    },
+    "2028": {
+      "cbs": null, "ibs_uf": 0.05, "ibs_mun": 0.05,
+      "fonte": "LC 214/2025",
+      "observacao": "Preencher a CBS quando a alíquota de referência for publicada."
+    }
+  }
+}

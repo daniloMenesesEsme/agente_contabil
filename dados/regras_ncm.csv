@@ -1,0 +1,7 @@
+ncm_prefixo;descricao;palavras_chave;regime;reducao_percentual;cclasstrib;fundamento;validado;observacao
+1006;Arroz;arroz,grão;aliquota_zero;100;;LC 214/2025, Anexo I (Cesta Básica Nacional);nao;EXEMPLO — conferir NCMs exatos no Anexo I
+0713.33;Feijão comum;feijão,feijao,carioca,preto;aliquota_zero;100;;LC 214/2025, Anexo I (Cesta Básica Nacional);nao;EXEMPLO — conferir NCMs exatos no Anexo I
+0401;Leite;leite,longa vida,uht;aliquota_zero;100;;LC 214/2025, Anexo I (Cesta Básica Nacional);nao;EXEMPLO — conferir NCMs exatos no Anexo I
+0901.21;Café torrado não descafeinado;café,cafe,pó,torrado;aliquota_zero;100;;LC 214/2025, Anexo I (Cesta Básica Nacional);nao;EXEMPLO — conferir NCMs exatos no Anexo I
+3004;Medicamentos;remédio,remedio,medicamento;reducao_60;60;;LC 214/2025, anexo de medicamentos;nao;EXEMPLO — parte dos medicamentos tem alíquota zero; conferir lista
+8517.13;Smartphones;celular,smartphone,telefone;padrao;0;;LC 214/2025, regra geral;nao;EXEMPLO — sem regime diferenciado conhecido

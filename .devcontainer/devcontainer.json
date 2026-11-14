@@ -1,0 +1,32 @@
+{
+  "name": "Agente Contábil",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": "..",
+    "target": "dev"
+  },
+  "workspaceFolder": "/app",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind",
+  "mounts": [
+    "source=agente-contabil-claude,target=/home/dev/.claude,type=volume"
+  ],
+  "runArgs": ["--env-file", "${localWorkspaceFolder}/.env"],
+  "containerUser": "dev",
+  "remoteUser": "dev",
+  "forwardPorts": [8000],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": ["-q"]
+      }
+    }
+  },
+  "postCreateCommand": "pytest -q"
+}

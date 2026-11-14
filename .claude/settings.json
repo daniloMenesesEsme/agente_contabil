@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./dados/brutos/**)",
+      "Read(./**/*.pdf)",
+      "Read(./.env)",
+      "Read(./.venv/**)"
+    ]
+  }
+}

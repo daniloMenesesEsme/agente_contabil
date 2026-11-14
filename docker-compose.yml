@@ -1,0 +1,20 @@
+services:
+  # Ambiente de desenvolvimento (VS Code + Claude Code rodam aqui dentro)
+  dev:
+    build: { context: ., target: dev }
+    volumes:
+      - .:/app                          # seu código, editável
+      - claude-config:/home/dev/.claude # mantém o login do Claude Code entre reconstruções
+    env_file: [{ path: .env, required: false }]
+    ports: ["8000:8000"]
+    command: sleep infinity
+
+  # Execução da API em modo produção:  docker compose up api
+  api:
+    build: { context: ., target: prod }
+    env_file: [{ path: .env, required: false }]
+    ports: ["8000:8000"]
+    profiles: [prod]
+
+volumes:
+  claude-config:

@@ -1,0 +1,27 @@
+🤖 AGENTE DE IA EM PRODUÇÃO (13 Peças)
+│
+├── 🧠 1. Cérebro e Memória
+│   ├── API da LLM: O motor principal que processa linguagem.
+│   └── Janela de Contexto: Envio do histórico completo da conversa a cada interação para manter a memória.
+│
+├── 📚 2. Conhecimento Especializado (RAG)
+│   ├── RAG (Retrieval-Augmented Generation): Busca de trechos relevantes em documentos para injetar no prompt.
+│   ├── Embeddings: Conversão de textos em vetores numéricos para busca por significado (semântica).
+│   └── Banco Vetorial: Armazenamento otimizado para encontrar os vetores mais próximos em milissegundos.
+│
+├── ⚡ 3. Ação e Autonomia
+│   ├── Tool Calling: Permissão para o modelo solicitar a execução de funções no seu código.
+│   └── Loop de Agente: Ciclo autônomo onde o modelo executa uma ferramenta, lê o resultado e decide o próximo passo.
+│
+├── 🔌 4. Integração e Experiência (UX)
+│   ├── Structured Output: Força o modelo a responder estritamente em um formato técnico (ex: JSON Schema).
+│   └── Streaming: Envio da resposta em pedaços (tokens) em tempo real para evitar sensação de travamento.
+│
+├── 🛡️ 5. Segurança, Custo e Resiliência
+│   ├── Guardrails: Camada de validação que bloqueia ataques (como Prompt Injection) na entrada e na saída.
+│   ├── Prompt Caching: Reaproveitamento da parte fixa do prompt para reduzir custos de API e latência.
+│   └── Fallback: Redundância automática que troca de modelo ou provedor caso o principal saia do ar.
+│
+└── 🔍 6. Qualidade e Monitoramento
+    ├── Evals (Avaliações): Bateria de testes automatizados para garantir que alterações no prompt não quebrem o sistema.
+    └── Observabilidade (Tracing): Registro detalhado de cada etapa, ferramentas usadas, tokens gastos e custos.

@@ -1,0 +1,2 @@
+# Evita problemas de quebra de linha Windows (CRLF) dentro do container Linux
+* text=auto eol=lf

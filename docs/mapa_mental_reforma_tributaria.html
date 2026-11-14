@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa Mental — Reforma Tributária</title>
+<style>
+  :root { --bg:#f7f7f5; --fg:#1d1d1f; --muted:#666; --line:#c9c9c4; --card:#fff; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#17181a; --fg:#ececec; --muted:#a0a0a0; --line:#3a3b3e; --card:#222326; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--fg); }
+  header { padding:20px 24px 8px; }
+  h1 { margin:0 0 4px; font-size:22px; }
+  header p { margin:0; color:var(--muted); font-size:13px; }
+  .bar { display:flex; gap:8px; padding:10px 24px; flex-wrap:wrap; }
+  button { font:inherit; font-size:13px; padding:6px 12px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--fg); cursor:pointer; }
+  .wrap { overflow:auto; padding:10px 24px 40px; }
+  ul.tree, ul.tree ul { list-style:none; margin:0; padding-left:26px; position:relative; }
+  ul.tree { padding-left:0; }
+  ul.tree ul::before { content:""; position:absolute; left:10px; top:0; bottom:14px; border-left:2px solid var(--line); }
+  ul.tree li { position:relative; margin:6px 0; }
+  ul.tree ul > li::before { content:""; position:absolute; left:-16px; top:15px; width:14px; border-top:2px solid var(--line); }
+  .node { display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:10px; background:var(--card); border:1px solid var(--line); border-left:5px solid var(--c, #888); max-width:760px; }
+  .node.has { cursor:pointer; user-select:none; }
+  .node.has::before { content:"▸"; font-size:11px; color:var(--muted); transition:transform .15s; }
+  li.open > .node.has::before { transform:rotate(90deg); }
+  li:not(.open) > ul { display:none; }
+  .root > .node { font-size:18px; font-weight:700; padding:9px 16px; border-left-width:8px; }
+  .l1 > .node { font-weight:650; }
+  .ts { font-size:11px; color:var(--muted); margin-left:4px; }
+  .note { font-size:12px; color:var(--muted); font-style:italic; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Mapa Mental — Reforma Tributária (explicação_impos.mp4)</h1>
+  <p>Feito a partir da transcrição automática. O vídeo termina no Bloco 4; os blocos 5–7 foram anunciados, mas não estão no arquivo. Clique nos itens para abrir e fechar.</p>
+</header>
+<div class="bar">
+  <button onclick="setAll(true)">Expandir tudo</button>
+  <button onclick="setAll(false)">Recolher tudo</button>
+</div>
+<div class="wrap"><ul class="tree" id="tree"></ul></div>
+
+<script>
+const C = ["#2a6fdb","#d9822b","#1f9d6b","#b8439a","#c0392b","#7a5cc9","#8a8a8a"];
+const data = {
+ t:"Reforma Tributária: os impostos mudam em 2027", ch:[
+  {t:"Introdução: por que importa", ts:"00:00", ch:[
+    {t:"Promessa: comida no supermercado e eletrônicos mais baratos"},
+    {t:"Promessa: serviços (escola, plano de saúde, internet) mais caros"},
+    {t:"Vale para consumidores e empreendedores (todo mundo)"},
+    {t:"Imposto embutido em quase tudo", ch:[
+      {t:"Pão, ovo, água, celular, serviços (ex.: conserto do ar-condicionado)"},
+      {t:"Não é só pagar boleto"}]},
+    {t:"Problema: falta de clareza sobre o que se paga, a quem e para onde vai"},
+    {t:"Roteiro em 7 blocos", ch:[
+      {t:"1. O que é a reforma e por que existe"},
+      {t:"2. História das reformas"},
+      {t:"3. O que diz a Constituição"},
+      {t:"4. Impostos antigos × novos"},
+      {t:"5. CBS e fim do PIS/COFINS", note:true},
+      {t:"6. Calendário de 2027", note:true},
+      {t:"7. Impacto para pessoa física e empreendedor", note:true}]}]},
+  {t:"Bloco 1: Conceitos básicos", ts:"03:01", ch:[
+    {t:"Reforma = reorganizar regras de algo que já funciona para melhorar"},
+    {t:"Tributo = dinheiro arrecadado pelo governo", ch:[
+      {t:"Financia saúde, educação, segurança"},
+      {t:"Origem: latim \"tributum\" (Roma)"},
+      {t:"\"Imposto\" = algo imposto, obrigatório"}]},
+    {t:"3 espécies de tributo", ch:[
+      {t:"Impostos"},{t:"Taxas"},{t:"Contribuições"},
+      {t:"Todo imposto é tributo, mas nem todo tributo é imposto"}]},
+    {t:"História antiga", ch:[
+      {t:"Tributo existe antes do dinheiro"},
+      {t:"Mesopotâmia: pagamento em grãos, gado, mão de obra"},
+      {t:"Egito: escribas avaliavam colheitas; parte ia para o faraó"},
+      {t:"Lógica: o Estado cobra e, em troca, deveria oferecer serviços"}]},
+    {t:"Definição: reforma tributária = mudar as regras de cobrança de impostos"},
+    {t:"Foco da reforma atual: tributos sobre o CONSUMO", ch:[
+      {t:"Muda alíquotas, extingue impostos antigos e cria novos"}]},
+    {t:"Alíquota = percentual (ou valor fixo) do tributo", ch:[
+      {t:"Ex.: celular de R$ 2.800 → ~40% é imposto (~R$ 1.680 sem ele)"}]},
+    {t:"4 problemas do sistema atual", ch:[
+      {t:"1. Complexidade", ch:[{t:"ICMS com regras diferentes em cada estado"},{t:"Ex.: fábrica de roupas que vende para o Brasil todo"}]},
+      {t:"2. Imposto sobre imposto (cumulatividade / efeito cascata)", ch:[{t:"Ex.: padaria: farinha → massa → bolo, imposto em cada etapa"},{t:"Custo repassado ao preço final"}]},
+      {t:"3. Guerra fiscal entre estados", ch:[{t:"Estados competem por alíquotas"},{t:"Ex.: montadoras escolhem onde se instalar"}]},
+      {t:"4. Burocracia e briga na Justiça", ch:[{t:"Ex.: casquinha do McDonald's registrada como \"bebida láctea\" para pagar menos"}]}]},
+    {t:"Objetivos da reforma", ch:[
+      {t:"Simplificar"},{t:"Dar transparência"},{t:"Reduzir a guerra fiscal"},{t:"Acabar com o efeito cascata"}]}]},
+  {t:"Bloco 2: História das reformas no Brasil", ts:"12:00", ch:[
+    {t:"Impostos desde a colonização (Portugal)"},
+    {t:"Anos 1960: sistema desorganizado e insustentável"},
+    {t:"Organizar ≠ diminuir impostos (opinião do apresentador: contra imposto abusivo)"},
+    {t:"Linha do tempo", ch:[
+      {t:"1965: Emenda Constitucional 18", ch:[
+        {t:"Cria o Sistema Tributário Nacional"},
+        {t:"Define quem cobra o quê e como se divide a arrecadação"},
+        {t:"Governo Castelo Branco"},
+        {t:"Cria IPI, ICM (depois ICMS) e ISS"}]},
+      {t:"1966: Código Tributário Nacional (CTN)", ch:[
+        {t:"Relator: Rubens Gomes de Souza, \"pai do direito tributário\""}]},
+      {t:"1988: Constituição Cidadã", ch:[{t:"Mais autonomia para estados e municípios"},{t:"ICM vira ICMS"}]},
+      {t:"1993: IPMF (imposto provisório sobre movimentação financeira), parte barrada pelo STF"},
+      {t:"1995–2008: tentativas que não avançaram"},
+      {t:"2019–2023: reforma atual (EC 132)"},
+      {t:"2025: Lei Complementar 214, que detalha os novos impostos"}]}]},
+  {t:"Bloco 3: Constituição e reforma", ts:"16:15", ch:[
+    {t:"Art. 145+: capítulo do Sistema Tributário Nacional (quais tributos e quem cobra)"},
+    {t:"Art. 60: regras para emendar a Constituição"},
+    {t:"Reforma tributária = PEC → Emenda Constitucional 132", ch:[
+      {t:"PEC aprovada no Congresso e promulgada vira emenda"},
+      {t:"Leis complementares detalham a prática"}]},
+    {t:"Quem pode propor uma PEC", ch:[
+      {t:"1/3 da Câmara ou do Senado"},
+      {t:"Presidente da República"},
+      {t:"Mais da metade das assembleias legislativas estaduais"},
+      {t:"Cidadão comum NÃO (iniciativa popular só vale para projetos de lei)"}]},
+    {t:"Sonegação fiscal é crime (Lei 8.137/1990), com pena de prisão"}]},
+  {t:"Bloco 4: Impostos que saem e impostos novos", ts:"17:49", ch:[
+    {t:"Até 31/12/2026, o consumo é tributado por 5 impostos", ch:[
+      {t:"IPI (federal)", ch:[{t:"Imposto sobre Produtos Industrializados"},{t:"Carros, eletrônicos, eletrodomésticos"}]},
+      {t:"PIS (federal)", ch:[{t:"Programa de Integração Social"},{t:"Sobre o faturamento das empresas"},{t:"Financia abono salarial e seguro-desemprego"}]},
+      {t:"COFINS (federal)", ch:[{t:"Financiamento da Seguridade Social"},{t:"Cobrada junto com o PIS"},{t:"Vai para saúde, previdência e assistência social"},{t:"Aparece no boleto do Simples Nacional"}]},
+      {t:"ICMS (estadual)", note:true},
+      {t:"ISS (municipal)", note:true}]},
+    {t:"3 novos impostos: anunciados, mas o vídeo termina antes da explicação", note:true}]},
+  {t:"Não explicado (o vídeo termina antes)", ch:[
+    {t:"Bloco 5: CBS e fim do PIS/COFINS"},
+    {t:"Bloco 6: Calendário de 2027"},
+    {t:"Bloco 7: Impacto no bolso (pessoa física e empreendedor)"}]}
+ ]};
+
+function build(n, depth, color){
+  const li = document.createElement("li");
+  if (depth===0) li.className="root open"; else if (depth===1) li.className="l1";
+  const c = depth===0 ? "#333" : color;
+  const d = document.createElement("span");
+  d.className = "node" + (n.ch ? " has" : "");
+  d.style.setProperty("--c", c);
+  d.textContent = n.t;
+  if (n.ts){ const s=document.createElement("span"); s.className="ts"; s.textContent="⏱ "+n.ts; d.appendChild(s); }
+  if (n.note){ const s=document.createElement("span"); s.className="note"; s.textContent="(não detalhado no vídeo)"; d.appendChild(s); }
+  li.appendChild(d);
+  if (n.ch){
+    const ul=document.createElement("ul");
+    n.ch.forEach((k,i)=>ul.appendChild(build(k, depth+1, depth===0 ? C[i%C.length] : color)));
+    li.appendChild(ul);
+    d.addEventListener("click",()=>li.classList.toggle("open"));
+  }
+  return li;
+}
+document.getElementById("tree").appendChild(build(data,0));
+function setAll(open){ document.querySelectorAll("#tree li").forEach(li=>{ if(li.querySelector("ul")) li.classList.toggle("open", open || li.classList.contains("root")); }); }
+setAll(true);
+</script>
+</body>
+</html>
