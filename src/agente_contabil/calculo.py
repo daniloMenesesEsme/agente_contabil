@@ -17,8 +17,23 @@ def _aplicar(aliquota: float | None, fator: float) -> float | None:
     return None if aliquota is None else round(aliquota * fator, 4)
 
 
+def aliquotas(p: dict, reducao: float) -> dict:
+    """CBS, IBS UF, IBS município e total (%) do ano `p` com a redução dada (None = indefinida)."""
+    fator = 1 - reducao / 100
+    cbs, uf, mun = (_aplicar(p[k], fator) for k in ("cbs", "ibs_uf", "ibs_mun"))
+    total = None if None in (cbs, uf, mun) else round(cbs + uf + mun, 4)
+    return {"cbs": cbs, "ibs_uf": uf, "ibs_mun": mun, "total": total}
+
+
+SEM_ALIQUOTA = {"cbs": None, "ibs_uf": None, "ibs_mun": None, "total": None}
+
+
 def consultar(ncm: str, ano: int | None = None) -> dict:
-    """Resposta determinística (sem IA) para um NCM. Sempre inclui fundamento e avisos."""
+    """Resposta determinística (sem IA) para um NCM. Sempre inclui fundamento e avisos.
+
+    Quando o enquadramento depende de conferência (código incompleto na lei, ou NCM em anexos com
+    regimes diferentes), o topo da resposta NÃO afirma um regime: `regime="a_confirmar"`, alíquotas
+    nulas e, se couber, os `cenarios` possíveis. Assim quem lê só o JSON não é induzido a erro."""
     ano = ano or config.ANO_PADRAO
     avisos: list[str] = []
 
@@ -45,38 +60,56 @@ def consultar(ncm: str, ano: int | None = None) -> dict:
             avisos.append(regra.observacao)
 
     indefinido = regime == "a_confirmar"  # conflito entre anexos: não há alíquota a informar
-    fator = 1 - reducao / 100
-    cbs = None if indefinido else _aplicar(p["cbs"], fator)
-    ibs_uf = None if indefinido else _aplicar(p["ibs_uf"], fator)
-    ibs_mun = None if indefinido else _aplicar(p["ibs_mun"], fator)
+    # A regra vale só para o produto DESCRITO (não para todo o código) quando: a lei cita o código
+    # incompleto (5 ou 7 dígitos, ex.: "8517.1": um celular casaria com um aparelho para surdos) ou
+    # o NCM é compartilhado com um anexo revogado (coluna outros_produtos). Os demais produtos do
+    # código ficam em `outros`: "padrao" ou "a_confirmar".
+    outros = ""
+    if regra and regime not in ("padrao", "a_confirmar"):
+        outros = regra.outros_produtos or ("padrao" if len(regra.ncm_prefixo) in (5, 7) else "")
+    incompleto = bool(outros)
+
+    cenarios: list[dict] = []
+    if incompleto:
+        if outros == "padrao":
+            outro = {"regime": "padrao", "reducao_percentual": 0.0, "aliquotas_percentual": aliquotas(p, 0.0)}
+            fim_aviso = (f"Se o produto não for exatamente esse, aplica-se a alíquota padrão "
+                         f"(total {outro['aliquotas_percentual']['total']}% em {ano}).")
+        else:
+            outro = {"regime": "a_confirmar", "reducao_percentual": None, "aliquotas_percentual": dict(SEM_ALIQUOTA)}
+            fim_aviso = ("Para outros produtos com este NCM (ex.: medicamentos que constavam de anexo revogado) "
+                         "o regime vigente NÃO foi identificado na base: confirme com um contador.")
+        cenarios = [
+            {"condicao": f"o produto é exatamente o descrito na regra: '{descricao}'",
+             "regime": regime, "reducao_percentual": reducao, "aliquotas_percentual": aliquotas(p, reducao)},
+            {"condicao": f"o produto é outro item do código {regra.ncm_prefixo}", **outro},
+        ]
+        avisos.insert(0, f"ATENÇÃO: o benefício vale só para o produto descrito na regra ('{descricao[:90]}'), "
+                         f"não para todo o código {regra.ncm_prefixo}. {fim_aviso} Veja os cenarios.")
     if indefinido:
-        avisos.insert(0, "REGIME NÃO DEFINIDO: a lei lista este NCM em mais de um anexo com regimes diferentes. "
-                         "Nenhuma alíquota foi calculada; confirme o enquadramento com um contador.")
-    elif None in (cbs, ibs_uf, ibs_mun):
-        avisos.append(f"Alguma alíquota de {ano} ainda não foi definida oficialmente (valor null).")
+        avisos.insert(0, "REGIME NÃO DEFINIDO: a lei lista este NCM em mais de um anexo com regimes diferentes "
+                         "(ou o anexo que o trazia foi revogado). Nenhuma alíquota foi calculada; "
+                         "confirme o enquadramento com um contador.")
+
+    if incompleto or indefinido:
+        regime_topo, reducao_topo, aliq = "a_confirmar", None, dict(SEM_ALIQUOTA)
+    else:
+        regime_topo, reducao_topo, aliq = regime, reducao, aliquotas(p, reducao)
+        if None in (aliq["cbs"], aliq["ibs_uf"], aliq["ibs_mun"]):
+            avisos.append(f"Alguma alíquota de {ano} ainda não foi definida oficialmente (valor null).")
     if p.get("observacao"):
         avisos.append(p["observacao"])
 
-    total = None if None in (cbs, ibs_uf, ibs_mun) else round(cbs + ibs_uf + ibs_mun, 4)
-    # Código incompleto na lei (5 ou 7 dígitos, ex.: "8517.1"): o benefício vale para o produto
-    # DESCRITO, não para todo o código. Sem isso, um celular casaria com um aparelho para surdos.
-    incompleto = bool(regra and len(regra.ncm_prefixo) in (5, 7) and regime not in ("padrao", "a_confirmar"))
-    if incompleto:
-        padrao = [p["cbs"], p["ibs_uf"], p["ibs_mun"]]
-        total_padrao = None if None in padrao else round(sum(padrao), 4)
-        avisos.insert(0, f"ATENÇÃO: o benefício vale só para o produto descrito na regra ('{descricao[:90]}'), "
-                         f"não para todo o código {regra.ncm_prefixo} (a lei cita o código incompleto). "
-                         f"Se o produto não for exatamente esse, aplica-se a alíquota padrão "
-                         f"(total {total_padrao}% em {ano}).")
     return {
         "enquadramento_a_confirmar": incompleto or indefinido,
         "ncm": normalizar_ncm(ncm),
         "descricao_regra": descricao,
         "ano": ano,
-        "regime": regime,
-        "reducao_percentual": reducao,
+        "regime": regime_topo,
+        "reducao_percentual": reducao_topo,
         "cclasstrib": regra.cclasstrib if regra else "",
-        "aliquotas_percentual": {"cbs": cbs, "ibs_uf": ibs_uf, "ibs_mun": ibs_mun, "total": total},
+        "aliquotas_percentual": aliq,
+        "cenarios": cenarios,
         "fundamento": fundamento,
         "texto_lei": regra.texto_lei if regra else "",
         "fonte_aliquotas": p.get("fonte"),

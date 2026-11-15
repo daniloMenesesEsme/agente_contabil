@@ -18,6 +18,8 @@ def validar() -> list[str]:
             erros.append(f"{r.ncm_prefixo}: regime desconhecido '{r.regime}'")
         if r.regime in ESPERADO and r.reducao_percentual != ESPERADO[r.regime]:
             erros.append(f"{r.ncm_prefixo}: regime {r.regime} exige redução {ESPERADO[r.regime]}")
+        if r.outros_produtos not in ("", "padrao", "a_confirmar"):
+            erros.append(f"{r.ncm_prefixo}: outros_produtos inválido '{r.outros_produtos}'")
         if not r.fundamento:
             erros.append(f"{r.ncm_prefixo}: sem fundamento legal")
     for ncm, n in Counter(r.ncm_prefixo for r in regras).items():

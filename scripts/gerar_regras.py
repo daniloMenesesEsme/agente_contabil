@@ -24,18 +24,21 @@ from agente_contabil.regras import REGIMES  # noqa: E402
 from extrair_anexos_lc214 import RE_NCM  # noqa: E402
 
 EXTRAIDO = Path("dados/brutos/extraido_lc214.csv")
+REVOGADOS = Path("dados/brutos/extraido_revogados_lc214.csv")
 ANEXOS = Path("dados/anexos_regimes.csv")
 DESTINO = Path("dados/regras_ncm.csv")
 CONFLITOS = Path("dados/brutos/conflitos.csv")
 EXCECOES = Path("dados/brutos/excecoes.csv")
 LIMITE_TEXTO = 600
 COLUNAS = ["ncm_prefixo", "descricao", "palavras_chave", "regime", "reducao_percentual", "cclasstrib",
-           "fundamento", "validado", "observacao", "texto_lei", "ressalva"]
+           "fundamento", "validado", "observacao", "texto_lei", "ressalva", "outros_produtos"]
 
 AVISO_RESSALVA = ("O texto da lei traz exceção ou condição para este item (ex.: 'exceto', 'somente'): "
                   "leia o texto_lei e confirme se o produto se enquadra.")
 AVISO_EXCECAO = ("Este NCM é EXCLUÍDO expressamente do benefício do anexo ('exceto' no texto da lei). "
                  "Se outro anexo listar este NCM, vale o outro. Confira o texto_lei.")
+AVISO_COMPARTILHADO = ("Este NCM também constava do Anexo {anexo} (revogado): o benefício vigente vale só para o "
+                       "produto descrito; para outros produtos deste NCM o regime vigente não foi identificado.")
 OBS_GENERICA = "Descrição genérica (categoria do anexo): o texto da lei não traz o nome do produto nesta linha."
 OBS_MULTI = "NCM listado em mais de um anexo, todos com o mesmo regime."
 
@@ -115,13 +118,18 @@ def _regra(prefixo: str, item: dict, anexo: dict, **extra) -> dict:
         "regime": anexo["regime"], "reducao_percentual": anexo["reducao_percentual"],
         "cclasstrib": "", "fundamento": anexo["fundamento"], "validado": "nao",
         "observacao": " ".join(obs), "texto_lei": item["linha"], "ressalva": " ".join(ressalva),
+        "outros_produtos": "",
     }
     linha.update(extra)
     return linha
 
 
-def gerar(itens: list[dict], anexos: dict[str, dict]) -> dict:
-    """Pura (sem arquivos). itens = linhas do extraido_lc214.csv; anexos = chave -> linha da tabela."""
+RE_REVOGACAO = re.compile(r"\(\s*Revogad[oa][^)]*\)", re.IGNORECASE)
+
+
+def gerar(itens: list[dict], anexos: dict[str, dict], revogados: list[dict] = ()) -> dict:
+    """Pura (sem arquivos). itens = linhas do extraido_lc214.csv; anexos = chave -> linha da tabela;
+    revogados = linhas do extraido_revogados_lc214.csv (NCMs que um anexo revogado listava)."""
     ignorados: Counter = Counter()
     por_prefixo: dict[str, list[dict]] = defaultdict(list)
     excecoes = []
@@ -180,7 +188,33 @@ def gerar(itens: list[dict], anexos: dict[str, dict]) -> dict:
                            {**anexo, "regime": "padrao", "reducao_percentual": "0",
                             "fundamento": f"{anexo['fundamento']} (exceção expressa)"},
                            ressalva=AVISO_EXCECAO)
-    return {"regras": [regras[p] for p in sorted(regras)], "conflitos": conflitos,
+    # NCM que só constava de anexo REVOGADO: o regime vigente não está na base. Em vez de cair em
+    # "alíquota padrão presumida" (provavelmente errada), vira a_confirmar, sem alíquota.
+    revogados_a_confirmar = compartilhados = 0
+    for it in revogados:
+        p = normalizar_ncm(it["ncm"])
+        anexo = anexos.get(it["anexo"])
+        if anexo is None or it["situacao"] == "excecao":
+            continue
+        if p in regras:
+            vigente = regras[p]
+            if vigente["regime"] not in ("a_confirmar", "padrao") and not vigente["outros_produtos"]:
+                # o código é compartilhado: a regra vigente vale só para o produto descrito
+                vigente["outros_produtos"] = "a_confirmar"
+                vigente["ressalva"] = (vigente["ressalva"] + " " + AVISO_COMPARTILHADO.format(
+                    anexo=anexo["anexo"])).strip()
+                compartilhados += 1
+            continue
+        m = RE_REVOGACAO.search(anexo["titulo_oficial"])
+        aviso = m.group(0) if m else "(revogado)"
+        regras[p] = _regra(
+            p, it, {**anexo, "regime": "a_confirmar", "reducao_percentual": "0",
+                    "fundamento": f"{anexo['fundamento']} (revogado)"},
+            observacao=f"Este NCM constava do Anexo {anexo['anexo']}, revogado {aviso.strip('()').replace('Revogado', '').strip()}. "
+                       "O regime vigente NÃO está na base: confirme na legislação atual com um contador.")
+        revogados_a_confirmar += 1
+    return {"revogados_a_confirmar": revogados_a_confirmar, "compartilhados": compartilhados,
+            "regras": [regras[p] for p in sorted(regras)], "conflitos": conflitos,
             "excecoes": excecoes, "excecoes_sem_pai": sem_pai, "ignorados": ignorados}
 
 
@@ -212,7 +246,7 @@ def main(sobrescrever: bool) -> None:
         if any(l.get("validado", "").lower() in ("sim", "s") for l in _ler_csv(DESTINO)):
             sys.exit(f"{DESTINO} tem regras validado=sim (revisão de contador). Use --sobrescrever só se tiver certeza.")
     anexos = {a["anexo"]: a for a in _ler_csv(ANEXOS)}
-    r = gerar(_ler_csv(EXTRAIDO), anexos)
+    r = gerar(_ler_csv(EXTRAIDO), anexos, _ler_csv(REVOGADOS) if REVOGADOS.exists() else [])
     _gravar(DESTINO, COLUNAS, r["regras"])
     _gravar(CONFLITOS, ["ncm_prefixo", "anexo", "regime", "reducao_percentual", "linha"], r["conflitos"])
     _gravar(EXCECOES, ["anexo", "ncm", "linha"], r["excecoes"])
@@ -228,6 +262,8 @@ def main(sobrescrever: bool) -> None:
     print(f"    sem prefixo-pai beneficiado (sem regra; revisar): {len(r['excecoes_sem_pai'])}")
     print(f"  conflitos (NCM em anexos com regimes diferentes): {len({c['ncm_prefixo'] for c in r['conflitos']})} NCMs "
           f"-> regra a_confirmar (sem alíquota) + {CONFLITOS}")
+    print(f"  NCMs de anexo revogado, sem tratamento vigente na base -> a_confirmar: {r['revogados_a_confirmar']}")
+    print(f"  regras vigentes cujo NCM também constava do anexo revogado (outros produtos -> a_confirmar): {r['compartilhados']}")
     print(f"  anexos ignorados (regime a_definir/revogado): {dict(r['ignorados']) or 'nenhum'}")
     nest = aninhados_com_regime_diferente(regras)
     print(f"  prefixos aninhados com regime diferente (vale o mais longo): {len(nest)}")

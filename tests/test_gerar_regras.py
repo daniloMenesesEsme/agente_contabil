@@ -124,3 +124,30 @@ def test_descricao_corta_exceto_que_so_lista_codigos():
 def test_descricao_mantem_exceto_que_descreve_o_produto():
     assert descricao_da_linha("5 | Peixes (exceto salmonídeos e bacalhaus) | 0302.31.00") == \
         "Peixes (exceto salmonídeos e bacalhaus)"
+
+
+ANEXOS_REV = {**ANEXOS, "XIV": {"anexo": "XIV", "regime": "revogado", "reducao_percentual": "",
+              "titulo_oficial": "(Revogado pela Lei Complementar nº 227, de 2026) MEDICAMENTOS A ZERO",
+              "fundamento": "LC 214/2025, Anexo XIV", "tipo": "revogado"}}
+
+
+def test_ncm_de_anexo_revogado_vira_a_confirmar_em_vez_de_padrao_presumido():
+    rev = [_it("XIV", "3004.90.99", "7 | Medicamento X | 3004.90.99")]
+    r = gerar([], ANEXOS_REV, rev)
+    (regra,) = r["regras"]
+    assert (regra["ncm_prefixo"], regra["regime"]) == ("30049099", "a_confirmar")
+    assert "revogado" in regra["fundamento"] and "Anexo XIV" in regra["observacao"]
+    assert "NÃO está na base" in regra["observacao"] and r["revogados_a_confirmar"] == 1
+
+
+def test_ncm_revogado_que_um_anexo_vigente_trata_mantem_a_regra_vigente():
+    r = gerar([_it("IV", "3004.90.99")], ANEXOS_REV, [_it("XIV", "3004.90.99")])
+    assert [(x["regime"], x["fundamento"]) for x in r["regras"]] == [("reducao_60", "LC 214/2025, Anexo IV")]
+
+
+def test_codigo_compartilhado_com_anexo_revogado_marca_outros_produtos_a_confirmar():
+    r = gerar([_it("IV", "3004.90.99", "9 | Substitutos de enxerto ósseo | 3004.90.99")], ANEXOS_REV,
+              [_it("XIV", "3004.90.99")])
+    (regra,) = r["regras"]
+    assert regra["regime"] == "reducao_60" and regra["outros_produtos"] == "a_confirmar"
+    assert "Anexo XIV (revogado)" in regra["ressalva"] and r["compartilhados"] == 1

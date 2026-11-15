@@ -1,4 +1,4 @@
-ncm_prefixo;descricao;palavras_chave;regime;reducao_percentual;cclasstrib;fundamento;validado;observacao;texto_lei;ressalva
+ncm_prefixo;descricao;palavras_chave;regime;reducao_percentual;cclasstrib;fundamento;validado;observacao;texto_lei;ressalva;outros_produtos
 1006;Arroz;arroz,grão;aliquota_zero;100;;LC 214/2025, Anexo I (fixture de teste);nao;;;
 0713.33;Feijão comum;feijão,feijao,carioca,preto;aliquota_zero;100;;LC 214/2025, Anexo I (fixture de teste);nao;;;
 0401;Leite;leite,longa vida,uht;aliquota_zero;100;;LC 214/2025, Anexo I (fixture de teste);nao;;;
@@ -8,3 +8,4 @@ ncm_prefixo;descricao;palavras_chave;regime;reducao_percentual;cclasstrib;fundam
 0306.1;Crustáceos;crustaceos,camarao;reducao_60;60;;LC 214/2025, Anexo VII (fixture de teste);nao;;0306.1 e 0306.3, exceto os produtos da subposição 0306.11;O texto da lei traz exceção ou condição para este item: confirme o enquadramento.
 3926.9;Bengala especial;bengala;reducao_60;60;;LC 214/2025, Anexo V (fixture de teste);nao;;3.1 | Bengala especial | 3926.9;
 2106.90.90;Preparação alimentícia;preparacao;a_confirmar;0;;LC 214/2025, Anexo I; LC 214/2025, Anexo VI;nao;A lei lista este NCM em anexos com regimes diferentes (Anexo I: aliquota_zero; Anexo VI: reducao_60). Nenhum foi escolhido: confirme o enquadramento com um contador.;;
+3003.90.9;Medicamento descrito;medicamento;reducao_60;60;;LC 214/2025, Anexo IV (fixture);nao;;;;a_confirmar

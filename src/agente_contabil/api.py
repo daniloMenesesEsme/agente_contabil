@@ -7,6 +7,8 @@ from pydantic import BaseModel
 
 from .busca import buscar_produto
 from .calculo import consultar
+from .servicos import consultar_servico
+from .simples import consultar_simples
 
 app = FastAPI(title="Agente Contábil — IBS/CBS", version="0.1.0")
 
@@ -32,6 +34,22 @@ def rota_ncm(ncm: str, ano: int | None = Query(None)):
 @app.get("/buscar")
 def rota_buscar(q: str = Query(..., min_length=2)):
     return buscar_produto(q)
+
+
+@app.get("/servico")
+def rota_servico(q: str = Query(..., min_length=2), ano: int | None = Query(None)):
+    r = consultar_servico(q, ano)
+    if "erro" in r:
+        raise HTTPException(400, r["erro"])
+    return r
+
+
+@app.get("/simples")
+def rota_simples(anexo: str = Query("")):
+    r = consultar_simples(anexo)
+    if "erro" in r:
+        raise HTTPException(400, r["erro"])
+    return r
 
 
 @app.post("/perguntar")

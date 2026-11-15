@@ -1,0 +1,5 @@
+anexo;titulo;secao;ordem;tipo;celulas;texto_lei;fundamento;validado
+SN-I;Alíquotas e Partilha do Simples Nacional - Comércio (Vigência: 1º/1/2027 a 31/12/2028);Para os anos-calendário 2027 e 2028;1;cabecalho;"[""Faixa"", ""Alíquota""]";Faixa | Alíquota;LC 214/2025, Anexo I (Simples Nacional);nao
+SN-I;Alíquotas e Partilha do Simples Nacional - Comércio (Vigência: 1º/1/2027 a 31/12/2028);Para os anos-calendário 2027 e 2028;2;faixa;"[""1ª Faixa"", ""4,00%""]";1ª Faixa | 4,00%;LC 214/2025, Anexo I (Simples Nacional);nao
+SN-I;Alíquotas e Partilha do Simples Nacional - Comércio (Vigência: 1º/1/2027 a 31/12/2028);A partir do ano-calendário 2029;3;faixa;"[""1ª Faixa"", ""5,00%""]";1ª Faixa | 5,00%;LC 214/2025, Anexo I (Simples Nacional);nao
+MEI-VII;Valores fixos do Microempreendedor Individual (MEI);Para o ano-calendário 2029;1;linha;"[""Comércio"", ""R$ 10,00""]";Comércio | R$ 10,00;LC 214/2025, Anexo VII (MEI);nao

@@ -24,6 +24,9 @@ class Regra:
     observacao: str
     texto_lei: str = ""   # linha literal do anexo da lei, para o contador conferir
     ressalva: str = ""    # aviso quando a lei traz exceção/condição para o item
+    # Regime dos OUTROS produtos do mesmo código: a regra vale só para o produto descrito.
+    # "padrao" | "a_confirmar" | "" (vazio = a regra vale para todo o código)
+    outros_produtos: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -45,6 +48,7 @@ def _ler(caminho: Path) -> list[Regra]:
                 observacao=linha.get("observacao", "").strip(),
                 texto_lei=linha.get("texto_lei", "").strip(),
                 ressalva=linha.get("ressalva", "").strip(),
+                outros_produtos=(linha.get("outros_produtos") or "").strip(),
             ))
     return regras
 

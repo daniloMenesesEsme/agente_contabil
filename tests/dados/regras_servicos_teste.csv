@@ -1,0 +1,4 @@
+item;descricao;palavras_chave;nbs;regime;reducao_percentual;fundamento;validado;observacao;texto_lei
+II-3;Ensino Médio;ensino,medio;122013000;reducao_60;60;LC 214/2025, Anexo II (fixture);nao;;3 | Ensino Médio | 1.2201.30.00
+II-1;Ensino Infantil, inclusive creche e pré-escola;ensino,infantil,creche;;reducao_60;60;LC 214/2025, Anexo II (fixture);nao;Código NBS não identificado nesta linha: confira o enquadramento pelo texto da lei.;1 | Ensino Infantil
+III-4;Serviços de pronto-socorro;pronto,socorro;126010000,12601;reducao_60;60;LC 214/2025, Anexo III (fixture);nao;;4 | Serviços de pronto-socorro | 1.2601

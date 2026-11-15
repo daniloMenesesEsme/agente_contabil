@@ -10,6 +10,8 @@ except ImportError:  # python-dotenv é opcional
 RAIZ = Path(__file__).resolve().parents[2]
 DADOS = Path(os.getenv("DADOS_DIR", RAIZ / "dados"))
 ARQ_REGRAS = DADOS / "regras_ncm.csv"
+ARQ_SERVICOS = DADOS / "regras_servicos.csv"
+ARQ_SIMPLES = DADOS / "simples_anexos.csv"
 ARQ_PARAMETROS = DADOS / "parametros.json"
 ARQ_PROMPT = RAIZ / "prompts" / "sistema.md"
 

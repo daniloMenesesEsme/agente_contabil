@@ -3,6 +3,8 @@ import json
 
 from .busca import buscar_produto
 from .calculo import consultar
+from .servicos import consultar_servico
+from .simples import consultar_simples
 
 FERRAMENTAS = [
     {
@@ -16,6 +18,33 @@ FERRAMENTAS = [
                 "ano": {"type": "integer", "description": "Ano de referência, ex.: 2027."},
             },
             "required": ["ncm", "ano"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "consultar_servico",
+        "description": "Para SERVIÇOS (sem NCM): busca por código NBS ou nome do serviço e retorna regime, alíquotas, "
+                       "fundamento, texto da lei e avisos. Serviço não encontrado = presunção de alíquota padrão (com aviso).",
+        "strict": True,
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "texto": {"type": "string", "description": "Nome do serviço ou código NBS."},
+                "ano": {"type": "integer", "description": "Ano de referência, ex.: 2027."},
+            },
+            "required": ["texto", "ano"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "consultar_simples",
+        "description": "Tabelas do Simples Nacional (anexos I a V) e do MEI que a LC 214 traz, SEM interpretação: "
+                       "retorna cabeçalhos, faixas e notas literais por período. Passe string vazia para listar os anexos.",
+        "strict": True,
+        "input_schema": {
+            "type": "object",
+            "properties": {"anexo": {"type": "string", "description": "I, II, III, IV, V ou MEI; vazio para listar."}},
+            "required": ["anexo"],
             "additionalProperties": False,
         },
     },
@@ -38,6 +67,12 @@ def executar(nome: str, entrada: dict) -> tuple[str, bool]:
     try:
         if nome == "consultar_ncm":
             r = consultar(entrada["ncm"], int(entrada["ano"]))
+            return json.dumps(r, ensure_ascii=False), "erro" in r
+        if nome == "consultar_servico":
+            r = consultar_servico(entrada["texto"], int(entrada["ano"]))
+            return json.dumps(r, ensure_ascii=False), "erro" in r
+        if nome == "consultar_simples":
+            r = consultar_simples(entrada["anexo"])
             return json.dumps(r, ensure_ascii=False), "erro" in r
         if nome == "buscar_produto":
             r = buscar_produto(entrada["texto"])

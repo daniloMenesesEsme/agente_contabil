@@ -64,7 +64,9 @@ uvicorn agente_contabil.api:app --reload --app-dir src   # abra http://127.0.0.1
    - Fonte: a página do Planalto salva como HTML em `dados/brutos/Lcp 214.html` (pasta fora do Git).
    - Pipeline (rode nesta ordem): `python scripts/extrair_anexos_lc214.py "dados/brutos/Lcp 214.html"` →
      `python scripts/gerar_anexos_regimes.py "dados/brutos/Lcp 214.html"` → `python scripts/gerar_regras.py` →
-     `python scripts/validar_regras.py`. Os geradores se recusam a sobrescrever arquivos já revisados
+     `python scripts/validar_regras.py`. Serviços e Simples/MEI têm geradores próprios:
+     `python scripts/gerar_regras_servicos.py "dados/brutos/Lcp 214.html"` (→ `dados/regras_servicos.csv`) e
+     `python scripts/gerar_simples.py "dados/brutos/Lcp 214.html"` (→ `dados/simples_anexos.csv`). Os geradores se recusam a sobrescrever arquivos já revisados
      (`--sobrescrever` força).
    - O regime de cada anexo vem **só do título oficial** (`dados/anexos_regimes.csv`); título que não diz o regime
      fica `a_definir`. Cada regra guarda o `texto_lei` (linha literal do anexo) e a `ressalva` quando a lei traz
@@ -76,11 +78,17 @@ uvicorn agente_contabil.api:app --reload --app-dir src   # abra http://127.0.0.1
        descrito, não para todo o código. A consulta marca `enquadramento_a_confirmar`.
      - **Exceções ("exceto"):** 5 regras `padrao` protegem NCMs excluídos; 8 NCMs excluídos ficaram sem regra
        (veja a saída de `gerar_regras.py`).
-     - **Medicamentos:** o Anexo XIV (medicamentos, redução a zero) foi **revogado pela LC 227/2026** e está fora
-       da base; a maioria dos medicamentos cai em "alíquota padrão presumida". Confirme a regra vigente.
+     - **Medicamentos:** o Anexo XIV (medicamentos, redução a zero) foi **revogado pela LC 227/2026**. Os 74 NCMs
+       que só constavam dele viram `a_confirmar` (sem alíquota), e as 3 regras vigentes que dividem NCM com ele
+       ficam com `outros_produtos=a_confirmar`. Medicamentos fora dessa lista ainda caem em "alíquota padrão
+       presumida": **confirme a regra vigente com um contador**.
      - **Anexos XVI e XVII** (limite de alíquota própria; Imposto Seletivo) ficaram `a_definir` e fora das regras.
-   - **Não cobertos ainda:** regras do Simples Nacional/MEI (o texto cru está em
-     `dados/brutos/extraido_simples_lc214.csv`) e serviços sem NCM (Anexos II e III).
+   - **Serviços (`consultar_servico`):** só os Anexos II e III (educação e saúde, 39 itens, redução de 60%) estão
+     cadastrados, por NBS ou texto. Serviço fora da lista recebe "presunção de alíquota padrão" com aviso, nunca
+     "sem imposto". Outros regimes de serviços (ex.: financeiros) ainda não estão cadastrados.
+   - **Simples Nacional e MEI (`consultar_simples`):** as tabelas que a LC 214 traz (anexos I a V e MEI, por
+     período de 2027 a 2033) estão reproduzidas **literalmente**, com cabeçalhos, sem cálculo nem interpretação.
+     O agente não escolhe anexo nem faixa da empresa. Falta estruturar e validar essas tabelas com um contador.
 2. **`parametros.json`**: preencha a CBS de 2027+ quando a alíquota de referência for publicada.
 3. Preencha `cclasstrib` conforme a tabela oficial (Notas Técnicas da NF-e — Reforma Tributária).
 
@@ -99,7 +107,8 @@ Cada resposta de `/perguntar` mostra os tokens gastos em `uso`.
 - [x] Carregar os anexos da LC 214 (gerados do texto da lei, pendentes de validação por contador)
 - [ ] Validar `regras_ncm.csv` (contador) e resolver os `a_confirmar`
 - [ ] Tabela cClassTrib oficial (a coluna `cclasstrib` existe, mas está vazia)
-- [ ] Regras de serviços (por NBS) e do Simples Nacional/MEI, estruturadas e validadas
+- [x] Serviços dos Anexos II e III e tabelas do Simples/MEI cadastrados (sem validação)
+- [ ] Validar serviços e Simples/MEI com contador; demais regimes de serviços; interpretar colunas do Simples
 - [ ] Regimes específicos (combustíveis, serviços financeiros, imóveis etc.)
 - [ ] Imposto Seletivo (bebidas, cigarros etc.)
 - [ ] Cronograma completo 2029–2033 em `parametros.json`

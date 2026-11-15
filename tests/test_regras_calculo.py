@@ -96,17 +96,22 @@ def test_titulos_anexos():
 
 
 def test_ressalva_e_texto_da_lei_acompanham_a_resposta():
-    r = consultar("03061100", 2026)
-    assert r["regime"] == "reducao_60"
+    r = consultar("03061100", 2026)  # "0306.1" é código incompleto: regime no topo fica a_confirmar
+    assert r["regime"] == "a_confirmar" and r["cenarios"][0]["regime"] == "reducao_60"
     assert any("exceção ou condição" in a for a in r["avisos"])
     assert "exceto os produtos da subposição 0306.11" in r["texto_lei"]
 
 
-def test_codigo_incompleto_na_lei_exige_confirmar_o_enquadramento():
+def test_codigo_incompleto_na_lei_nao_afirma_regime_no_topo_e_traz_cenarios():
     r = consultar("39269099", 2026)  # a regra é "3926.9": vale só para a bengala descrita
-    assert r["regime"] == "reducao_60" and r["enquadramento_a_confirmar"] is True
+    assert r["enquadramento_a_confirmar"] is True
+    assert r["regime"] == "a_confirmar" and r["reducao_percentual"] is None
+    assert r["aliquotas_percentual"]["total"] is None  # nada de número solto para induzir a erro
+    se_sim, se_nao = r["cenarios"]
+    assert (se_sim["regime"], se_sim["aliquotas_percentual"]["total"]) == ("reducao_60", 0.4)
+    assert (se_nao["regime"], se_nao["aliquotas_percentual"]["total"]) == ("padrao", 1.0)
+    assert "Bengala especial" in se_sim["condicao"]
     assert r["avisos"][0].startswith("ATENÇÃO: o benefício vale só para o produto descrito")
-    assert "alíquota padrão (total 1.0% em 2026)" in r["avisos"][0]
 
 
 def test_codigo_completo_nao_pede_confirmacao_de_enquadramento():
@@ -117,5 +122,15 @@ def test_conflito_entre_anexos_nao_informa_aliquota():
     r = consultar("21069090", 2026)
     assert r["regime"] == "a_confirmar" and r["enquadramento_a_confirmar"] is True
     assert r["aliquotas_percentual"] == {"cbs": None, "ibs_uf": None, "ibs_mun": None, "total": None}
+    assert r["cenarios"] == []
     assert r["avisos"][0].startswith("REGIME NÃO DEFINIDO")
     assert not any("ainda não foi definida oficialmente" in a for a in r["avisos"])
+
+
+def test_ncm_compartilhado_com_anexo_revogado_nao_afirma_regime_para_outros_produtos():
+    r = consultar("30039099", 2026)  # regra de 7 dígitos com outros_produtos=a_confirmar
+    assert r["regime"] == "a_confirmar" and r["enquadramento_a_confirmar"] is True
+    se_sim, se_nao = r["cenarios"]
+    assert se_sim["regime"] == "reducao_60" and se_sim["aliquotas_percentual"]["total"] == 0.4
+    assert se_nao["regime"] == "a_confirmar" and se_nao["aliquotas_percentual"]["total"] is None
+    assert "NÃO foi identificado na base" in r["avisos"][0]

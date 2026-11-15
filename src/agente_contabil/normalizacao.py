@@ -18,5 +18,10 @@ def normalizar_texto(texto: str) -> str:
     return re.sub(r"[^a-z0-9 ]+", " ", t.lower()).strip()
 
 
+# Palavras sem conteúdo: "de" casaria qualquer descrição ("consultoria de marketing" x "pronto-socorro de ...").
+STOPWORDS = {"de", "da", "do", "das", "dos", "e", "em", "no", "na", "nos", "nas", "ao", "aos", "as", "os",
+             "um", "uma", "para", "por", "com", "sem", "ou", "que", "se", "ser"}
+
+
 def tokens(texto: str) -> set[str]:
-    return {p for p in normalizar_texto(texto).split() if len(p) > 1}
+    return {p for p in normalizar_texto(texto).split() if len(p) > 1 and p not in STOPWORDS}

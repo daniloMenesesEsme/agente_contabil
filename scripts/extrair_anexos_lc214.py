@@ -213,16 +213,18 @@ def _situacao_em_tabela(linha: str, pos: int) -> str:
     return ""
 
 
-def extrair_linhas(texto: str, excluir: frozenset[str] = frozenset()) -> list[dict]:
+def extrair_linhas(texto: str, excluir: frozenset[str] = frozenset(),
+                   apenas: frozenset[str] | None = None) -> list[dict]:
     """Devolve {anexo, ncm, linha, situacao} para cada NCM de cada anexo da LC 214.
 
     `anexo` é a chave única. `situacao`: "" (sem restrição), "ressalva" (a linha traz exceção ou
     condição) ou "excecao" (o NCM aparece depois de 'exceto...': está EXCLUÍDO do benefício).
-    Pula as chaves em `excluir` (ex.: revogados) e os anexos do Simples/MEI, que não trazem NCMs."""
+    Pula as chaves em `excluir` (ex.: revogados) e os anexos do Simples/MEI, que não trazem NCMs.
+    Com `apenas`, processa SOMENTE essas chaves (usado para listar o que um anexo revogado continha)."""
     linhas = texto.splitlines()
     saida = []
     for oc in ocorrencias_anexos(texto):
-        if oc["tipo"] != "lc214" or oc["chave"] in excluir:
+        if oc["tipo"] != "lc214" or (oc["chave"] not in apenas if apenas is not None else oc["chave"] in excluir):
             continue
         restantes = 0  # linhas de texto corrido ainda dentro de uma lista de exceções
         for linha in linhas[oc["inicio"] + 1:oc["fim"]]:
@@ -283,6 +285,12 @@ def main(arquivo: str) -> None:
         w = csv.DictWriter(f, fieldnames=["anexo", "ncm", "situacao", "linha"], delimiter=";")
         w.writeheader()
         w.writerows(linhas)
+    destino_rev = Path("dados/brutos/extraido_revogados_lc214.csv")
+    revogadas = extrair_linhas(texto, apenas=frozenset(revogados))
+    with open(destino_rev, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=["anexo", "ncm", "situacao", "linha"], delimiter=";")
+        w.writeheader()
+        w.writerows(revogadas)
     simples = linhas_simples(texto)
     destino_simples = Path("dados/brutos/extraido_simples_lc214.csv")
     with open(destino_simples, "w", newline="", encoding="utf-8") as f:
@@ -302,7 +310,9 @@ def main(arquivo: str) -> None:
         if oc["tipo"] == "lc214" and oc["chave"] not in anexos and oc["chave"] not in revogados:
             print(f"  Anexo {oc['chave']}: sem NCMs (a conferir na Etapa 3) | {oc['titulo']}")
     for nome in revogados:
-        print(f"  Anexo {nome}: revogado (excluído da extração) | {titulos[nome]['titulo']}")
+        qtd_rev = sum(l["anexo"] == nome for l in revogadas)
+        print(f"  Anexo {nome}: revogado (excluído das regras; {qtd_rev} NCMs listados em {destino_rev}) "
+              f"| {titulos[nome]['titulo']}")
     if not linhas:
         print("Nenhum NCM: confira se o arquivo contém os ANEXOS da lei (ficam no final do texto).")
     else:
