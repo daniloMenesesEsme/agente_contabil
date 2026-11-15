@@ -88,9 +88,9 @@ def consultar(ncm: str, ano: int | None = None) -> dict:
         avisos.insert(0, f"ATENÇÃO: o benefício vale só para o produto descrito na regra ('{descricao[:90]}'), "
                          f"não para todo o código {regra.ncm_prefixo}. {fim_aviso} Veja os cenarios.")
     if indefinido:
-        avisos.insert(0, "REGIME NÃO DEFINIDO: a lei lista este NCM em mais de um anexo com regimes diferentes "
-                         "(ou o anexo que o trazia foi revogado). Nenhuma alíquota foi calculada; "
-                         "confirme o enquadramento com um contador.")
+        avisos.insert(0, "REGIME NÃO DEFINIDO: não há um regime único para este NCM na base (conflito entre anexos, "
+                         "anexo revogado ou regra que depende do produto, como nos medicamentos). Nenhuma alíquota foi "
+                         "calculada; leia a observação e confirme o enquadramento com um contador.")
 
     if incompleto or indefinido:
         regime_topo, reducao_topo, aliq = "a_confirmar", None, dict(SEM_ALIQUOTA)

@@ -21,20 +21,46 @@ from pathlib import Path
 DADOS = Path("dados")
 DESTINO = DADOS / "revisao_contador.csv"
 COLUNAS = ["prioridade", "categoria", "tipo_dado", "chave", "descricao", "regime_atual", "reducao_atual",
-           "fundamento", "o_que_conferir", "texto_lei", "decisao", "regime_correto", "observacao_contador"]
+           "fundamento", "o_que_conferir", "texto_lei", "hipotese_a_confirmar", "decisao", "regime_correto",
+           "observacao_contador"]
+
+# Hipóteses de apoio ao contador. Só entra aqui o que o TEXTO DA LEI sustentou (scripts/verificar_artigos_lei.py,
+# resultado de 15/11/2026). Ficou de fora, por não constar da lei: "Nota Técnica do TCU", "lista quadrimestral" e
+# a ligação do Anexo XVI ao art. 15. São HIPÓTESES: a decisão é do contador.
+PREFIXO_HIPOTESE = "Verificado no texto da lei (15/11/2026), a confirmar: "
+HIPOTESES = {
+    "medicamentos": PREFIXO_HIPOTESE + (
+        "art. 133 reduz em 60% as alíquotas sobre medicamentos registrados na Anvisa; art. 146 (redação LC 227/2026) "
+        "dá alíquota zero aos medicamentos da lista divulgada a cada 120 dias por ato conjunto MF/CGIBS (§3º), a soros "
+        "e vacinas (inc. III) e ao fornecimento a órgãos públicos e demais entes do §1º. O Anexo XIV (lista fixa de "
+        "NCMs) foi revogado. Não dá para decidir só pelo NCM: depende do produto, do registro e da lista vigente."),
+    "XVII": PREFIXO_HIPOTESE + ("o art. 409 institui o Imposto Seletivo e o texto cita o Anexo XVII; logo o anexo "
+                                "não trata de redução de IBS/CBS."),
+    "XVI": ("A nota recebida ligava o Anexo XVI ao art. 15, mas o art. 15 NÃO menciona o Anexo XVI no texto da lei: "
+            "o artigo que remete a ele ainda não foi identificado."),
+    "aliquota_de_referencia": ("O texto da lei menciona 'resolução do Senado' e 'redutor', mas NÃO contém 'TCU' nem "
+                               "'nota técnica': o 11,3% citado numa nota externa não tem fonte na lei. Use só valor "
+                               "publicado oficialmente."),
+}
 
 
 def _linha(prioridade, categoria, tipo, chave, descricao="", regime="", reducao="", fundamento="",
-           conferir="", texto="") -> dict:
+           conferir="", texto="", hipotese="") -> dict:
     return {"prioridade": prioridade, "categoria": categoria, "tipo_dado": tipo, "chave": chave,
             "descricao": descricao, "regime_atual": regime, "reducao_atual": reducao, "fundamento": fundamento,
-            "o_que_conferir": conferir, "texto_lei": texto, "decisao": "", "regime_correto": "",
+            "o_que_conferir": conferir, "texto_lei": texto, "hipotese_a_confirmar": hipotese, "decisao": "",
+            "regime_correto": "",
             "observacao_contador": ""}
 
 
 def categoria_regra(r: dict) -> tuple[int, str, str]:
     """(prioridade, categoria, o que conferir) de uma regra de NCM."""
     p, reg, fund = r["ncm_prefixo"], r["regime"], r["fundamento"]
+    if reg == "a_confirmar" and "arts. 133 e 146" in fund:
+        return 1, "medicamentos_regra_vigente", (
+            "Posição de medicamentos sem alíquota definida: o Anexo XIV foi revogado e a lei passou a depender do "
+            "registro na Anvisa e da lista do art. 146. Se houver uma regra geral aplicável a todo o NCM, use "
+            "decisao=corrigir e informe regime_correto; senão deixe pendente e anote em observacao_contador.")
     if reg == "a_confirmar" and "(revogado)" in fund:
         return 1, "regime_a_confirmar_anexo_revogado", (
             "O NCM constava de anexo REVOGADO (LC 227/2026) e nenhum anexo vigente o trata. Qual o regime vigente? "
@@ -78,7 +104,8 @@ def linhas_revisao(regras, servicos, anexos, simples, sinonimos, avisos, paramet
         if r["ressalva"] and categoria != "ressalva_da_lei":
             conferir += f" Ressalva: {r['ressalva'][:200]}"
         saida.append(_linha(prioridade, categoria, "regra_ncm", r["ncm_prefixo"], r["descricao"], r["regime"],
-                            r["reducao_percentual"], r["fundamento"], conferir, r["texto_lei"]))
+                            r["reducao_percentual"], r["fundamento"], conferir, r["texto_lei"],
+                            HIPOTESES["medicamentos"] if categoria == "medicamentos_regra_vigente" else ""))
     for r in fora_da_tabela:  # código que não existe na tabela oficial vigente: alterado ou revogado?
         saida.append(_linha(2, "ncm_fora_da_tabela_oficial", "ncm_tabela", r["ncm_prefixo"], r["descricao"], r["regime"],
                             r["reducao_percentual"], r["fundamento"],
@@ -113,7 +140,8 @@ def linhas_revisao(regras, servicos, anexos, simples, sinonimos, avisos, paramet
             saida.append(_linha(2, "anexo_sem_regime_definido", "anexo", a["anexo"], a["titulo_oficial"][:200],
                                 a["regime"], "", a["fundamento"],
                                 "O título não diz o regime. Qual artigo da LC 214 remete a este anexo e qual o efeito "
-                                "(ficou fora das regras de NCM)? Anote em observacao_contador."))
+                                "(ficou fora das regras de NCM)? Anote em observacao_contador.",
+                                hipotese=HIPOTESES.get(a["anexo"], "")))
     for anexo in sorted({l["anexo"] for l in simples}):
         linhas = [l for l in simples if l["anexo"] == anexo]
         saida.append(_linha(3, "tabela_simples_mei_transcrita", "simples", anexo, linhas[0]["titulo"][:200], "", "",
@@ -134,7 +162,8 @@ def linhas_revisao(regras, servicos, anexos, simples, sinonimos, avisos, paramet
             saida.append(_linha(2, "aliquota_de_referencia_indefinida", "parametro", ano,
                                 f"{', '.join(nulos).upper()} de {ano} sem valor (null)", fundamento=p.get("fonte", ""),
                                 conferir="Informe a alíquota publicada (com a fonte) em observacao_contador; o "
-                                         "ajuste do parametros.json é manual."))
+                                         "ajuste do parametros.json é manual.",
+                                hipotese=HIPOTESES["aliquota_de_referencia"]))
     saida.sort(key=lambda l: (l["prioridade"], l["categoria"], str(l["chave"])))
     return saida
 

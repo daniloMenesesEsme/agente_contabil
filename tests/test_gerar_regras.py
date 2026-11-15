@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from gerar_regras import (aninhados_com_regime_diferente, categoria_do_anexo, descricao_da_linha, gerar,
-                          palavras_chave)
+                          marcar_codigos_compartilhados_com_medicamentos, palavras_chave, regras_medicamentos)
 
 ANEXOS = {
     "I": {"anexo": "I", "titulo_oficial": "ALIMENTOS SUBMETIDOS À REDUÇÃO A ZERO DAS ALÍQUOTAS", "regime": "aliquota_zero",
@@ -151,3 +151,21 @@ def test_codigo_compartilhado_com_anexo_revogado_marca_outros_produtos_a_confirm
     (regra,) = r["regras"]
     assert regra["regime"] == "reducao_60" and regra["outros_produtos"] == "a_confirmar"
     assert "Anexo XIV (revogado)" in regra["ressalva"] and r["compartilhados"] == 1
+
+
+def test_medicamentos_viram_a_confirmar_citando_os_artigos_133_e_146():
+    r = regras_medicamentos({"3004": "Medicamentos (exceto os produtos das posições 30.02...)"})
+    assert [(x["ncm_prefixo"], x["regime"], x["validado"]) for x in r] == [("3003", "a_confirmar", "nao"), ("3004", "a_confirmar", "nao")]
+    assert r[1]["descricao"].startswith("Medicamentos (exceto") and "arts. 133 e 146" in r[0]["fundamento"]
+    for texto in ("revogado pela LC 227/2026", "60%", "Anvisa", "120 dias", "NÃO se define só pelo NCM"):
+        assert texto in r[0]["observacao"]
+    assert "alíquota zero" in r[0]["observacao"] and r[0]["reducao_percentual"] == "0"  # sem alíquota inventada
+
+
+def test_regra_vigente_em_ncm_de_medicamento_vale_so_para_o_produto_descrito():
+    regras = [{"ncm_prefixo": "30049099", "regime": "reducao_60", "outros_produtos": "", "ressalva": ""},
+              {"ncm_prefixo": "30021221", "regime": "reducao_60", "outros_produtos": "", "ressalva": ""},
+              {"ncm_prefixo": "3004", "regime": "a_confirmar", "outros_produtos": "", "ressalva": ""}]
+    assert marcar_codigos_compartilhados_com_medicamentos(regras) == 1
+    assert regras[0]["outros_produtos"] == "a_confirmar" and "arts. 133 e 146" in regras[0]["ressalva"]
+    assert regras[1]["outros_produtos"] == "" and regras[2]["outros_produtos"] == ""  # outro capítulo / já a_confirmar

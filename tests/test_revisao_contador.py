@@ -115,3 +115,24 @@ def test_planilha_com_decisoes_nao_e_sobrescrita(tmp_path):
         w = csv.DictWriter(f, fieldnames=COLUNAS, delimiter=";"); w.writeheader()
         w.writerow({c: "" for c in COLUNAS})
     assert _tem_decisoes(arq) is False and _tem_decisoes(tmp_path / "nao_existe.csv") is False
+
+
+def test_medicamentos_a_confirmar_viram_item_de_prioridade_1_com_hipotese_verificada():
+    med = _r("3004", "a_confirmar", "LC 214/2025, arts. 133 e 146 (redação LC 227/2026)")
+    assert categoria_regra(med)[:2] == (1, "medicamentos_regra_vigente")
+    (linha,) = [l for l in linhas_revisao([med], [], [], [], [], [], {}) if l["chave"] == "3004"]
+    h = linha["hipotese_a_confirmar"]
+    assert h.startswith("Verificado no texto da lei") and "60%" in h and "120 dias" in h and "Anvisa" in h
+    assert "quadrimestral" not in h and "TCU" not in h  # o que a lei NÃO sustentou não entra
+
+
+def test_hipoteses_so_para_o_que_foi_verificado_e_sem_decisao_pre_preenchida():
+    anexos = [{"anexo": "XVII", "tipo": "ncm", "regime": "a_definir", "titulo_oficial": "IS", "fundamento": "f"},
+              {"anexo": "XVI", "tipo": "ncm", "regime": "a_definir", "titulo_oficial": "LIMITE", "fundamento": "f"}]
+    param = {"anos": {"2027": {"cbs": None, "ibs_uf": 0.05, "ibs_mun": 0.05, "fonte": "LC"}}}
+    linhas = {(l["tipo_dado"], l["chave"]): l for l in linhas_revisao([], [], anexos, [], [], [], param)}
+    assert "art. 409" in linhas[("anexo", "XVII")]["hipotese_a_confirmar"]
+    assert "NÃO menciona o Anexo XVI" in linhas[("anexo", "XVI")]["hipotese_a_confirmar"]
+    assert "NÃO contém 'TCU'" in linhas[("parametro", "2027")]["hipotese_a_confirmar"]
+    for l in linhas.values():  # a hipótese informa; a decisão continua do contador
+        assert l["decisao"] == "" and l["regime_correto"] == "" and l["observacao_contador"] == ""

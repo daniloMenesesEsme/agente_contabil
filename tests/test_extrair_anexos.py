@@ -131,3 +131,52 @@ def test_excecao_entre_parenteses_so_vale_ate_fechar_o_parentese():
     s = {l["ncm"]: l["situacao"] for l in extrair_linhas(_texto(html))}
     assert s["0210.99"] == "excecao"
     assert s["0201.10.00"] == s["0202.10.00"] == "ressalva"  # incluídos, mas com ressalva do 'exceto'
+
+
+def _linhas(html: str) -> list[str]:
+    return [" ".join(l.split()) for l in _texto(html).splitlines() if l.strip() and "" not in l]
+
+
+def test_riscado_por_style_inline_e_descartado_e_o_resto_fica():
+    html = '<p>vigente <span style="text-decoration: line-through">antigo 1006.20</span> fim</p>'
+    assert _linhas(html) == ["vigente fim"]
+    assert _linhas('<p><font style="TEXT-DECORATION:LINE-THROUGH;color:red">velho</font>novo</p>') == ["novo"]
+
+
+def test_riscado_por_classe_definida_em_style():
+    html = ("<style>.c1 { color: red; text-decoration: line-through } .c2 { color: blue }</style>"
+            '<p>a <span class="c1">velho</span> <span class="c2">azul</span> b</p>')
+    assert _linhas(html) == ["a azul b"]  # o texto do <style> também não vira texto da lei
+
+
+def test_paragrafo_riscado_sem_fechar_nao_contamina_os_seguintes():
+    """O HTML do Planalto omite </p>: abrir outro <p> fecha o anterior (e o riscado dele)."""
+    html = ('<p>vigente 1</p><p style="text-decoration:line-through">revogado 0401.10<p>vigente 2<p>vigente 3')
+    assert _linhas(html) == ["vigente 1", "vigente 2", "vigente 3"]
+
+
+def test_linha_de_tabela_riscada_some_inteira_sem_deixar_separadores():
+    html = ("<table><tr><td>1</td><td>Arroz</td><td>1006.20</td>"
+            '<tr style="text-decoration:line-through"><td>2</td><td>Velho</td><td>0401.10</td>'
+            "<tr><td>3</td><td>Feijão</td><td>0713.33</td></table>")
+    assert _linhas(html) == ["1 | Arroz | 1006.20", "3 | Feijão | 0713.33"]
+
+
+def test_celula_riscada_sai_e_as_demais_colunas_se_mantem_alinhadas_por_separador():
+    html = ('<table><tr><td>1</td><td style="text-decoration:line-through">Velha</td><td>Nova</td><td>1006.20</td></tr></table>')
+    assert _linhas(html) == ["1 | Nova | 1006.20"]
+
+
+def test_riscado_aninhado_fecha_so_no_elemento_certo():
+    html = '<p>a<span style="text-decoration:line-through">b<b>c</b>d</span>e <b>f</b></p>'
+    assert _linhas(html) == ["ae f"]
+
+
+def test_ncm_so_em_texto_riscado_nao_e_extraido():
+    html = ('<p>ANEXO I</p><p>ALIMENTOS SUBMETIDOS À REDUÇÃO A ZERO</p><table><tr><td>1</td><td>Arroz</td><td>1006.20</td>'
+            '<tr><td>2</td><td style="text-decoration:line-through">Antigo</td><td style="text-decoration:line-through">0401.10.10</td></table>')
+    assert [l["ncm"] for l in extrair_linhas(_texto(html))] == ["1006.20"]
+
+
+def test_script_nao_vira_texto():
+    assert _linhas("<p>ok</p><script>var x = '1006.20';</script><p>fim</p>") == ["ok", "fim"]

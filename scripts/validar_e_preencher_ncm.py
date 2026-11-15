@@ -114,13 +114,14 @@ def adicionar_alertas_na_revisao(df_rev: pd.DataFrame, df_obsoletos: pd.DataFram
 
 
 def relatar_linhas_repetidas_simples(df_simples: pd.DataFrame) -> pd.DataFrame:
-    """Linhas com o mesmo anexo, seção e conteúdo de outra anterior. Só relata: não decide qual versão vale."""
+    """Linhas (exceto cabeçalhos) com o mesmo anexo, seção e conteúdo de outra anterior. Só relata."""
     df = df_simples.copy()
     df["ordem_num"] = pd.to_numeric(df["ordem"], errors="coerce")
     df = df.sort_values(["anexo", "secao", "ordem_num"])
     chave = ["anexo", "secao", "celulas"]
     primeira = df.groupby(chave)["ordem_num"].transform("min")
-    rep = df[df.duplicated(subset=chave, keep="first")].copy()
+    # rótulo de cabeçalho repetido (IRPJ, CSLL, Cofins...) é normal numa tabela de partilha: só relata o resto
+    rep = df[df.duplicated(subset=chave, keep="first") & (df["tipo"] != "cabecalho")].copy()
     rep["primeira_ocorrencia_ordem"] = primeira[rep.index]
     rep["primeira_celula"] = rep["celulas"].str.slice(0, 60)
     rep["motivo"] = "Mesmo conteúdo já aparece antes na mesma seção (possíveis duas versões da tabela)"

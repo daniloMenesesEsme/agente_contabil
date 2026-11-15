@@ -25,6 +25,7 @@ from extrair_anexos_lc214 import RE_NCM  # noqa: E402
 
 EXTRAIDO = Path("dados/brutos/extraido_lc214.csv")
 REVOGADOS = Path("dados/brutos/extraido_revogados_lc214.csv")
+NCM_TABELA = Path("dados/ncm_tabela.csv")
 ANEXOS = Path("dados/anexos_regimes.csv")
 DESTINO = Path("dados/regras_ncm.csv")
 CONFLITOS = Path("dados/brutos/conflitos.csv")
@@ -124,6 +125,20 @@ def _regra(prefixo: str, item: dict, anexo: dict, **extra) -> dict:
     return linha
 
 
+# Medicamentos. O Anexo XIV (lista fixa de NCMs com alíquota zero) foi REVOGADO pela LC 227/2026 e vem riscado no
+# HTML (o extrator o descarta, corretamente). Sem tratamento, todo remédio cairia em "alíquota padrão presumida".
+# Pelo texto da lei (conferido com scripts/verificar_artigos_lei.py): art. 133 reduz em 60% as alíquotas sobre
+# medicamentos registrados na Anvisa; art. 146 dá alíquota zero aos da lista divulgada a cada 120 dias por ato
+# conjunto MF/CGIBS (§3º), a soros e vacinas (inc. III) e ao fornecimento aos entes do §1º. NCM sozinho não decide.
+POSICOES_MEDICAMENTOS = {"3003": "Medicamentos, posição 30.03", "3004": "Medicamentos, posição 30.04"}
+FUND_MEDICAMENTOS = "LC 214/2025, arts. 133 e 146 (redação LC 227/2026)"
+OBS_MEDICAMENTOS = ("Medicamentos: o Anexo XIV (lista fixa de NCMs com alíquota zero) foi revogado pela LC 227/2026. "
+                    "Pelo texto da lei, o art. 133 reduz em 60% as alíquotas sobre medicamentos registrados na Anvisa, "
+                    "e o art. 146 prevê alíquota zero para os da lista divulgada a cada 120 dias por ato conjunto "
+                    "MF/CGIBS, para soros e vacinas e para o fornecimento aos entes do §1º. O regime NÃO se define só "
+                    "pelo NCM: confirme o produto e a lista vigente com um contador.")
+AVISO_COMPARTILHADO_MED = ("Este NCM é de medicamentos (posições 3003/3004): o benefício vigente vale só para o produto "
+                           "descrito; para os demais produtos deste NCM o regime depende dos arts. 133 e 146 da lei.")
 RE_REVOGACAO = re.compile(r"\(\s*Revogad[oa][^)]*\)", re.IGNORECASE)
 
 
@@ -218,6 +233,28 @@ def gerar(itens: list[dict], anexos: dict[str, dict], revogados: list[dict] = ()
             "excecoes": excecoes, "excecoes_sem_pai": sem_pai, "ignorados": ignorados}
 
 
+def regras_medicamentos(descricoes: dict[str, str] | None = None) -> list[dict]:
+    """Regras `a_confirmar` das posições 3003 e 3004 (medicamentos), sem alíquota, com a base legal verificada."""
+    descricoes = descricoes or {}
+    return [{"ncm_prefixo": p, "descricao": descricoes.get(p, nome)[:120], "palavras_chave": "medicamento,remedio",
+             "regime": "a_confirmar", "reducao_percentual": "0", "cclasstrib": "", "fundamento": FUND_MEDICAMENTOS,
+             "validado": "nao", "observacao": OBS_MEDICAMENTOS, "texto_lei": "", "ressalva": "", "outros_produtos": ""}
+            for p, nome in POSICOES_MEDICAMENTOS.items()]
+
+
+def marcar_codigos_compartilhados_com_medicamentos(regras: list[dict]) -> int:
+    """Regra vigente de um NCM de medicamentos (ex.: dispositivo do Anexo IV em 3004.90.99) vale só para o produto
+    descrito; os demais produtos do NCM ficam a_confirmar. Devolve quantas foram marcadas."""
+    marcadas = 0
+    for r in regras:
+        if (r["ncm_prefixo"][:4] in POSICOES_MEDICAMENTOS and r["regime"] not in ("a_confirmar", "padrao")
+                and not r["outros_produtos"]):
+            r["outros_produtos"] = "a_confirmar"
+            r["ressalva"] = (r["ressalva"] + " " + AVISO_COMPARTILHADO_MED).strip()
+            marcadas += 1
+    return marcadas
+
+
 def aninhados_com_regime_diferente(regras: list[dict]) -> list[tuple[str, str]]:
     """Pares (prefixo curto, prefixo longo) em que o mais longo tem regime diferente (vale o mais longo)."""
     por = {r["ncm_prefixo"]: r for r in regras}
@@ -247,12 +284,19 @@ def main(sobrescrever: bool) -> None:
             sys.exit(f"{DESTINO} tem regras validado=sim (revisão de contador). Use --sobrescrever só se tiver certeza.")
     anexos = {a["anexo"]: a for a in _ler_csv(ANEXOS)}
     r = gerar(_ler_csv(EXTRAIDO), anexos, _ler_csv(REVOGADOS) if REVOGADOS.exists() else [])
-    _gravar(DESTINO, COLUNAS, r["regras"])
     _gravar(CONFLITOS, ["ncm_prefixo", "anexo", "regime", "reducao_percentual", "linha"], r["conflitos"])
     _gravar(EXCECOES, ["anexo", "ncm", "linha"], r["excecoes"])
 
     regras = r["regras"]
+    compartilhadas = marcar_codigos_compartilhados_com_medicamentos(regras)
+    descricoes = {}
+    if NCM_TABELA.exists():  # texto oficial das posições, para a descrição das regras de medicamentos
+        descricoes = {re.sub(r"\D", "", l["codigo"]): l["descricao"] for l in _ler_csv(NCM_TABELA) if l["nivel"] == "4"}
+    regras = sorted(regras + regras_medicamentos(descricoes), key=lambda x: x["ncm_prefixo"])
+    _gravar(DESTINO, COLUNAS, regras)
     print(f"{len(regras)} regras -> {DESTINO}")
+    print(f"  medicamentos (3003/3004): 2 regras a_confirmar + {compartilhadas} regras vigentes marcadas como "
+          "'vale só para o produto descrito'")
     print("  por regime:", dict(Counter(x["regime"] for x in regras)))
     print("  por anexo :", dict(Counter(x["fundamento"].replace("LC 214/2025, ", "")[:30] for x in regras)))
     print(f"  com descrição genérica (nome do produto não está na linha): {sum(x['observacao'] == OBS_GENERICA for x in regras)}")

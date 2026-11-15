@@ -78,14 +78,20 @@ uvicorn agente_contabil.api:app --reload --app-dir src   # abra http://127.0.0.1
        descrito, não para todo o código. A consulta marca `enquadramento_a_confirmar`.
      - **Exceções ("exceto"):** 5 regras `padrao` protegem NCMs excluídos; 8 NCMs excluídos ficaram sem regra
        (veja a saída de `gerar_regras.py`).
-     - **Medicamentos:** o Anexo XIV (medicamentos, redução a zero) foi **revogado pela LC 227/2026**. Os 74 NCMs
-       que só constavam dele viram `a_confirmar` (sem alíquota), e as 3 regras vigentes que dividem NCM com ele
-       ficam com `outros_produtos=a_confirmar`. Medicamentos fora dessa lista ainda caem em "alíquota padrão
-       presumida": **confirme a regra vigente com um contador**.
+     - **Medicamentos:** o Anexo XIV (lista fixa de NCMs com alíquota zero) foi **revogado pela LC 227/2026** e vem
+       riscado no HTML da lei, então o extrator o descarta. Pelo texto da lei (conferido com
+       `scripts/verificar_artigos_lei.py`): o art. 133 reduz em 60% as alíquotas de medicamentos registrados na
+       Anvisa; o art. 146 dá alíquota zero aos da lista divulgada a cada 120 dias por ato conjunto MF/CGIBS, a soros
+       e vacinas e ao fornecimento aos entes do §1º. Por isso o regime **não se define só pelo NCM**: as posições
+       3003 e 3004 ficam `a_confirmar` (sem alíquota), e a regra vigente que divide NCM com elas (ex.: dispositivo do
+       Anexo IV em 3004.90.99) vale só para o produto descrito. Um contador precisa confirmar.
      - **Anexos XVI e XVII** (limite de alíquota própria; Imposto Seletivo) ficaram `a_definir` e fora das regras.
    - **Serviços (`consultar_servico`):** só os Anexos II e III (educação e saúde, 39 itens, redução de 60%) estão
      cadastrados, por NBS ou texto. Serviço fora da lista recebe "presunção de alíquota padrão" com aviso, nunca
      "sem imposto". Outros regimes de serviços (ex.: financeiros) ainda não estão cadastrados.
+   - **Texto riscado:** o Planalto marca texto revogado/alterado com `<strike>` e, na maioria (milhares de trechos), com
+     CSS `text-decoration: line-through`. O extrator trata os dois (e classes CSS, com pilha de elementos para o HTML
+     sem `</p>`). Texto riscado nunca entra nos dados.
    - **Simples Nacional e MEI (`consultar_simples`):** as tabelas que a LC 214 traz (anexos I a V e MEI, por
      período de 2027 a 2033) estão reproduzidas **literalmente**, com cabeçalhos, sem cálculo nem interpretação.
      O agente não escolhe anexo nem faixa da empresa. Falta estruturar e validar essas tabelas com um contador.
@@ -116,8 +122,8 @@ precisa de conferência, do mais arriscado ao menos**, com a coluna `o_que_confe
 
 | Prioridade | O que é |
 |---|---|
-| 1 | Regime desconhecido: NCMs `a_confirmar` (conflito entre anexos ou anexo revogado) e a pergunta sobre medicamentos |
-| 2 | Vale só para o produto descrito (código incompleto, NCM dividido com anexo revogado), NCM que não existe na tabela oficial, anexos sem regime, CBS 2027/2028 indefinida |
+| 1 | Regime desconhecido: NCMs `a_confirmar` (conflito entre anexos) e as posições de medicamentos 3003/3004 |
+| 2 | Vale só para o produto descrito (código incompleto, NCM dividido com medicamentos), NCM que não existe na tabela oficial, anexos sem regime, CBS 2027/2028 indefinida |
 | 3 | Exceções ("exceto"), tabelas do Simples/MEI, serviços sem NBS, sinônimos e avisos de busca |
 | 4 | Ressalvas da lei e serviços |
 | 5 | Regras sem alerta (conferência normal) |

@@ -78,3 +78,10 @@ def test_ncm_completo_dentro_da_subposicao_excluida_tambem_e_excluido_mas_o_pai_
     assert ncm_em_clausula_de_excecao(linha, "030611")        # a própria subposição
     assert not ncm_em_clausula_de_excecao(linha, "03061")     # o pai (mais amplo) segue com o benefício
     assert not ncm_em_clausula_de_excecao(linha, "0306")
+
+
+def test_cabecalho_repetido_nao_e_duplicata():
+    df = pd.DataFrame({"anexo": ["SN-III"] * 4, "secao": ["2029"] * 4, "ordem": ["1", "2", "3", "4"],
+                       "tipo": ["cabecalho", "cabecalho", "faixa", "faixa"],
+                       "celulas": ['["IRPJ"]', '["IRPJ"]', '["1ª Faixa", "4%"]', '["1ª Faixa", "4%"]']})
+    assert list(relatar_linhas_repetidas_simples(df)["ordem"]) == ["4"]  # só a faixa repetida

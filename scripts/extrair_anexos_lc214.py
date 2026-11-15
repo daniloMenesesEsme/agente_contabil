@@ -35,23 +35,81 @@ RE_SIMPLES = re.compile(r"simples nacional|microempreendedor", re.IGNORECASE)
 class _Texto(HTMLParser):
     """Converte HTML em texto, quebrando linha em parágrafos e células de tabela.
 
-    Descarta o conteúdo riscado (<strike>, <s>, <del>): o Planalto marca assim o texto
-    revogado ou alterado. Tags aninhadas são tratadas por contagem de profundidade.
+    Descarta TODO conteúdo riscado: o Planalto marca assim o texto revogado ou alterado, e a grande maioria
+    vem por CSS (`style="text-decoration: line-through"` ou classe definida em <style>), não por <strike>.
+    Os elementos abertos ficam numa pilha; o riscado vale até o elemento fechar. O HTML do Planalto omite
+    fechamentos (</p>, </td>, </tr>), então abrir <p>/<td>/<tr>/<li> fecha implicitamente o anterior, para o
+    riscado de um parágrafo não vazar para os seguintes. Enquanto há riscado aberto, nada é emitido.
     """
     QUEBRA = {"p", "br", "tr", "div", "li", "h1", "h2", "h3", "h4"}
     RISCADO = {"strike", "s", "del"}
+    VAZIAS = {"br", "hr", "img", "meta", "link", "input", "col", "area", "base", "wbr", "param", "source", "track"}
+    # tag que abre -> (tags que ela fecha se estiverem abertas, tags que barram a busca)
+    FECHA_IMPLICITO = {
+        "p": ({"p"}, {"table", "td", "th", "li", "div", "body"}),
+        "li": ({"li"}, {"ul", "ol"}),
+        "td": ({"td", "th"}, {"tr", "table"}),
+        "th": ({"td", "th"}, {"tr", "table"}),
+        "tr": ({"td", "th", "tr"}, {"table"}),
+    }
 
     def __init__(self):
         super().__init__()
         self.partes: list[str] = []
-        self._riscado = 0  # profundidade de tags de riscado abertas
+        self._pilha: list[tuple[str, bool]] = []  # (tag, riscado?) dos elementos abertos
+        self._riscado = 0  # quantos elementos riscados estão abertos na pilha
         self._celulas = 0  # células já abertas na linha de tabela atual
         self._em_celula = 0  # profundidade de <td>/<th> abertas (parágrafos dentro da célula não quebram linha)
+        self._em_estilo = False  # dentro de <style>/<script>: o conteúdo não é texto da lei
+        self._css = ""
+        self._classes_riscadas: set[str] = set()
 
-    def handle_starttag(self, tag, attrs):
+    # --- pilha -----------------------------------------------------------------------------------
+    def _fechar_ate(self, indice: int) -> None:
+        """Desempilha do topo até `indice` (inclusive), ajustando o contador de riscado."""
+        while len(self._pilha) > indice:
+            _, riscado = self._pilha.pop()
+            self._riscado -= riscado
+
+    def _fechar_implicitos(self, tag: str) -> None:
+        regra = self.FECHA_IMPLICITO.get(tag)
+        if not regra:
+            return
+        alvo, barreiras = regra
+        for i in range(len(self._pilha) - 1, -1, -1):
+            nome = self._pilha[i][0]
+            if nome in alvo:
+                self._fechar_ate(i)
+                return
+            if nome in barreiras:
+                return
+
+    def _esta_riscado(self, tag: str, attrs) -> bool:
         if tag in self.RISCADO:
-            self._riscado += 1
-        elif tag == "table":
+            return True
+        d = dict(attrs)
+        if "line-through" in (d.get("style") or "").lower():
+            return True
+        return bool(self._classes_riscadas & set((d.get("class") or "").lower().split()))
+
+    # --- HTMLParser ------------------------------------------------------------------------------
+    def handle_starttag(self, tag, attrs):
+        if tag in ("style", "script"):
+            self._em_estilo = True
+            return
+        if tag in self.VAZIAS:
+            if tag == "br" and not self._riscado:
+                self.partes.append(" " if self._em_celula else "\n")
+            return
+        self._fechar_implicitos(tag)
+        riscado = self._esta_riscado(tag, attrs)
+        self._pilha.append((tag, riscado))
+        self._riscado += riscado
+        if self._riscado:
+            if tag == "tr":
+                self._celulas = 0
+            return  # nada é emitido dentro de riscado
+        if tag == "table":
             self.partes.append(f"\n{MARCA_TABELA}\n")
             self._celulas = 0
         elif tag in ("td", "th"):
@@ -68,13 +126,26 @@ class _Texto(HTMLParser):
                 self.partes.append(" " if self._em_celula else "\n")
 
     def handle_endtag(self, tag):
-        if tag in self.RISCADO and self._riscado > 0:
-            self._riscado -= 1
-        elif tag in ("td", "th") and self._em_celula > 0:
+        if tag in ("style", "script"):
+            self._em_estilo = False
+            if tag == "style":  # classes CSS que riscam: .c12 { text-decoration: line-through }
+                for m in re.finditer(r"\.([\w-]+)\s*\{[^}]*line-through[^}]*\}", self._css.lower()):
+                    self._classes_riscadas.add(m.group(1))
+                self._css = ""
+            return
+        if tag in self.VAZIAS:
+            return
+        for i in range(len(self._pilha) - 1, -1, -1):  # fecha o elemento aberto mais recente com esse nome
+            if self._pilha[i][0] == tag:
+                self._fechar_ate(i)
+                break
+        if tag in ("td", "th") and self._em_celula > 0:
             self._em_celula -= 1
 
     def handle_data(self, data):
-        if self._riscado == 0:
+        if self._em_estilo:
+            self._css += data
+        elif self._riscado == 0:
             # quebra de linha no código-fonte do HTML é só espaço: só as tags quebram linha
             self.partes.append(re.sub(r"\s+", " ", data.replace("\xa0", " ")))
 
