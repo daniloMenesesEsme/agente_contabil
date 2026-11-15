@@ -8,7 +8,7 @@
 import argparse
 import json
 
-from .busca import buscar_produto
+from .ferramentas import _resposta_busca
 from .calculo import consultar
 from .servicos import consultar_servico
 from .simples import consultar_simples
@@ -31,7 +31,7 @@ def main() -> None:
     elif args.cmd == "servico":
         saida = consultar_servico(args.texto, args.ano)
     elif args.cmd == "buscar":
-        saida = buscar_produto(args.texto)
+        saida = _resposta_busca(args.texto)  # candidatos + avisos, igual à ferramenta do agente
     else:
         from .agente import perguntar
         r = perguntar(args.pergunta, args.ano)

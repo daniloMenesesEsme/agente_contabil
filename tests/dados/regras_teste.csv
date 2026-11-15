@@ -9,3 +9,9 @@ ncm_prefixo;descricao;palavras_chave;regime;reducao_percentual;cclasstrib;fundam
 3926.9;Bengala especial;bengala;reducao_60;60;;LC 214/2025, Anexo V (fixture de teste);nao;;3.1 | Bengala especial | 3926.9;
 2106.90.90;Preparação alimentícia;preparacao;a_confirmar;0;;LC 214/2025, Anexo I; LC 214/2025, Anexo VI;nao;A lei lista este NCM em anexos com regimes diferentes (Anexo I: aliquota_zero; Anexo VI: reducao_60). Nenhum foi escolhido: confirme o enquadramento com um contador.;;
 3003.90.9;Medicamento descrito;medicamento;reducao_60;60;;LC 214/2025, Anexo IV (fixture);nao;;;;a_confirmar
+0201;Carnes bovina, suína, ovina, caprina e de aves e produtos de origem animal;carnes,bovina,suina,ovina,caprina,aves,origem,animal;aliquota_zero;100;;LC 214/2025, Anexo I (fixture);nao;;;;
+1507.90;Óleos de soja, de milho e de canola;oleos,soja,milho,canola;reducao_60;60;;LC 214/2025, Anexo VII (fixture);nao;;;;
+1513.21;Óleo de babaçu;oleo,babacu;aliquota_zero;100;;LC 214/2025, Anexo I (fixture);nao;;;;
+0712.90;Alho em pó, sal mineralizado e condimentos, inclusive para conservação de carne;alho,mineralizado,condimentos,conservacao,carne;reducao_60;60;;LC 214/2025, Anexo IX (fixture);nao;;;;
+0401.10.10;Leite, em conformidade com os requisitos da legislação;leite,conformidade,requisitos,legislacao;aliquota_zero;100;;LC 214/2025, Anexo I (fixture);nao;;;;
+0401.10.90;Leite, em conformidade com os requisitos da legislação;leite,conformidade,requisitos,legislacao;aliquota_zero;100;;LC 214/2025, Anexo I (fixture);nao;;;;

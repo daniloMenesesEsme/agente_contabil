@@ -5,6 +5,7 @@ from .busca import buscar_produto
 from .calculo import consultar
 from .servicos import consultar_servico
 from .simples import consultar_simples
+from .texto_busca import avisos_da_consulta
 
 FERRAMENTAS = [
     {
@@ -50,7 +51,8 @@ FERRAMENTAS = [
     },
     {
         "name": "buscar_produto",
-        "description": "Busca NCMs candidatos a partir do nome ou categoria de um produto.",
+        "description": "Busca NCMs candidatos a partir do nome ou categoria de um produto. Cada candidato traz "
+                       "`confianca` (alta/media/baixa) e `palavras_sem_correspondencia`; `avisos` traz lacunas conhecidas.",
         "strict": True,
         "input_schema": {
             "type": "object",
@@ -60,6 +62,18 @@ FERRAMENTAS = [
         },
     },
 ]
+
+
+def _resposta_busca(texto: str) -> dict:
+    """Candidatos + avisos (tema com lacuna conhecida, nada encontrado, confiança baixa)."""
+    candidatos = buscar_produto(texto)
+    avisos = avisos_da_consulta(texto)
+    if not candidatos:
+        avisos.append("Nenhum produto encontrado na base. Não afirme regime: peça o NCM ao usuário.")
+    elif all(c["confianca"] == "baixa" for c in candidatos):
+        avisos.append("CONFIANÇA BAIXA: nenhum candidato cobre o que foi pedido (veja palavras_sem_correspondencia). "
+                      "Não afirme regime sem o usuário confirmar o item.")
+    return {"candidatos": candidatos, "avisos": avisos}
 
 
 def executar(nome: str, entrada: dict) -> tuple[str, bool]:
@@ -75,8 +89,7 @@ def executar(nome: str, entrada: dict) -> tuple[str, bool]:
             r = consultar_simples(entrada["anexo"])
             return json.dumps(r, ensure_ascii=False), "erro" in r
         if nome == "buscar_produto":
-            r = buscar_produto(entrada["texto"])
-            return json.dumps(r or {"aviso": "Nenhum produto encontrado na base."}, ensure_ascii=False), False
+            return json.dumps(_resposta_busca(entrada["texto"]), ensure_ascii=False), False
         return f"Ferramenta desconhecida: {nome}", True
     except (KeyError, ValueError, TypeError) as e:
         return f"Entrada inválida para {nome}: {e}", True

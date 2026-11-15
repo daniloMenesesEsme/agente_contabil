@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from .busca import buscar_produto
 from .calculo import consultar
+from .ferramentas import _resposta_busca
 from .servicos import consultar_servico
 from .simples import consultar_simples
 
@@ -32,8 +33,9 @@ def rota_ncm(ncm: str, ano: int | None = Query(None)):
 
 
 @app.get("/buscar")
-def rota_buscar(q: str = Query(..., min_length=2)):
-    return buscar_produto(q)
+def rota_buscar(q: str = Query(..., min_length=2), completo: bool = Query(False)):
+    """Lista de candidatos; com `completo=true`, {candidatos, avisos} (avisos de lacunas conhecidas)."""
+    return _resposta_busca(q) if completo else buscar_produto(q)
 
 
 @app.get("/servico")

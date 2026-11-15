@@ -20,3 +20,9 @@ def test_rotas_servico_e_simples_sem_ia():
     assert c.get("/simples").json()["anexos_disponiveis"]
     assert c.get("/simples?anexo=I").json()["anexo"] == "SN-I"
     assert c.get("/simples?anexo=ZZ").status_code == 400
+
+
+def test_buscar_completo_traz_avisos_e_o_padrao_continua_lista():
+    assert isinstance(c.get("/buscar?q=leite").json(), list)
+    r = c.get("/buscar?q=medicamentos&completo=true").json()
+    assert set(r) == {"candidatos", "avisos"} and any("AVISO DE TESTE" in a for a in r["avisos"])

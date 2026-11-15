@@ -23,5 +23,32 @@ STOPWORDS = {"de", "da", "do", "das", "dos", "e", "em", "no", "na", "nos", "nas"
              "um", "uma", "para", "por", "com", "sem", "ou", "que", "se", "ser"}
 
 
+# (final do plural, troca, mínimo de letras que sobram). Aplicado igual na consulta e no índice,
+# então só precisa ser consistente, não linguisticamente perfeito.
+_PLURAIS = (("oes", "ao", 1), ("aes", "ao", 1), ("ais", "al", 2), ("eis", "el", 2), ("ois", "ol", 2),
+            ("res", "r", 2), ("zes", "z", 2), ("ns", "m", 2))
+
+
+def radical(palavra: str) -> str:
+    """Tira o plural: 'carnes' -> 'carne', 'oleos' -> 'oleo', 'saboes' -> 'sabao', 'flores' -> 'flor'."""
+    if len(palavra) <= 3:
+        return palavra
+    for fim, troca, minimo in _PLURAIS:
+        if palavra.endswith(fim) and len(palavra) - len(fim) >= minimo:
+            return palavra[:-len(fim)] + troca
+    if palavra.endswith("s") and not palavra.endswith("ss"):
+        return palavra[:-1]
+    return palavra
+
+
+def lista_tokens(texto: str) -> list[str]:
+    """Radicais das palavras com conteúdo, na ordem em que aparecem e sem repetir."""
+    vistos: list[str] = []
+    for p in normalizar_texto(texto).split():
+        if len(p) > 1 and p not in STOPWORDS and radical(p) not in vistos:
+            vistos.append(radical(p))
+    return vistos
+
+
 def tokens(texto: str) -> set[str]:
-    return {p for p in normalizar_texto(texto).split() if len(p) > 1 and p not in STOPWORDS}
+    return set(lista_tokens(texto))

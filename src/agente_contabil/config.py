@@ -12,6 +12,8 @@ DADOS = Path(os.getenv("DADOS_DIR", RAIZ / "dados"))
 ARQ_REGRAS = DADOS / "regras_ncm.csv"
 ARQ_SERVICOS = DADOS / "regras_servicos.csv"
 ARQ_SIMPLES = DADOS / "simples_anexos.csv"
+ARQ_SINONIMOS = DADOS / "sinonimos.csv"
+ARQ_AVISOS_BUSCA = DADOS / "avisos_busca.csv"
 ARQ_PARAMETROS = DADOS / "parametros.json"
 ARQ_PROMPT = RAIZ / "prompts" / "sistema.md"
 

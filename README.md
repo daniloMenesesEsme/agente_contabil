@@ -89,6 +89,12 @@ uvicorn agente_contabil.api:app --reload --app-dir src   # abra http://127.0.0.1
    - **Simples Nacional e MEI (`consultar_simples`):** as tabelas que a LC 214 traz (anexos I a V e MEI, por
      período de 2027 a 2033) estão reproduzidas **literalmente**, com cabeçalhos, sem cálculo nem interpretação.
      O agente não escolhe anexo nem faixa da empresa. Falta estruturar e validar essas tabelas com um contador.
+   - **Busca por texto** (`buscar_produto`, `consultar_servico`; sem IA): usa radicais (carne = carnes), peso por
+     raridade, cobertura da pergunta e posição da palavra na descrição, e devolve `confianca`
+     (alta/média/baixa) e `palavras_sem_correspondencia`. Dois arquivos de auxílio, **revisáveis por contador**:
+     `dados/sinonimos.csv` (só equivalências estritas; ex.: frango = ave, porque a lei diz "aves") e
+     `dados/avisos_busca.csv` (tema com lacuna conhecida, ex.: medicamentos, vira aviso). Sinônimo ruim induz
+     a erro (um "remédio = medicamento" casava vacina veterinária e foi removido): acrescente com cuidado.
 2. **`parametros.json`**: preencha a CBS de 2027+ quando a alíquota de referência for publicada.
 3. Preencha `cclasstrib` conforme a tabela oficial (Notas Técnicas da NF-e — Reforma Tributária).
 

@@ -11,13 +11,9 @@ from pathlib import Path
 
 from . import config
 from .calculo import aliquotas, parametros
-from .normalizacao import tokens as _tokens
+from .texto_busca import ranquear
 
-GENERICAS = {"servico", "servicos", "prestacao"}  # estão em quase toda descrição: não identificam o serviço
-
-
-def tokens(texto: str) -> set[str]:
-    return _tokens(texto) - GENERICAS
+GENERICAS = frozenset({"servico", "prestacao"})  # (radicais) estão em quase toda descrição: não identificam
 
 
 @dataclass(frozen=True)
@@ -57,21 +53,20 @@ def _eh_codigo_nbs(consulta: str) -> bool:
     return bool(re.fullmatch(r"[\d.\s]+", consulta.strip())) and len(re.sub(r"\D", "", consulta)) >= 4
 
 
-def buscar_servico(consulta: str, limite: int = 5) -> list[RegraServico]:
-    """Por código NBS (casa por prefixo nos dois sentidos) ou por palavras da descrição."""
+def buscar_servico_detalhado(consulta: str, limite: int = 5) -> list[tuple[RegraServico, dict]]:
+    """(regra, {confianca, cobertura}). Por código NBS (prefixo nos dois sentidos) ou por texto."""
     if _eh_codigo_nbs(consulta):
         cod = re.sub(r"\D", "", consulta)
-        return [r for r in carregar() if any(n.startswith(cod) or cod.startswith(n) for n in r.nbs)][:limite]
-    palavras = tokens(consulta)
-    if not palavras:
-        return []
-    pontuadas = []
-    for r in carregar():
-        pontos = len(palavras & (tokens(r.descricao) | tokens(r.palavras_chave.replace(",", " "))))
-        if pontos:
-            pontuadas.append((pontos, r))
-    pontuadas.sort(key=lambda x: -x[0])
-    return [r for _, r in pontuadas[:limite]]
+        achadas = [r for r in carregar() if any(n.startswith(cod) or cod.startswith(n) for n in r.nbs)]
+        return [(r, {"confianca": "alta", "cobertura": 1.0}) for r in achadas[:limite]]
+    regras = carregar()
+    ranking, _ = ranquear(consulta, [(r.descricao, r.palavras_chave.replace(",", " ")) for r in regras], GENERICAS)
+    return [(regras[x["indice"]], {"confianca": x["confianca"], "cobertura": round(x["cobertura"], 2)})
+            for x in ranking[:limite]]
+
+
+def buscar_servico(consulta: str, limite: int = 5) -> list[RegraServico]:
+    return [r for r, _ in buscar_servico_detalhado(consulta, limite)]
 
 
 def consultar_servico(consulta: str, ano: int | None = None) -> dict:
@@ -84,16 +79,19 @@ def consultar_servico(consulta: str, ano: int | None = None) -> dict:
         return {"erro": "Informe o serviço (nome ou código NBS)."}
 
     encontrados = []
-    for r in buscar_servico(consulta):
+    for r, info in buscar_servico_detalhado(consulta):
         avisos = [] if r.validado else ["Regra ainda NÃO validada por um contador. Use apenas como referência."]
         if r.observacao:
             avisos.append(r.observacao)
         encontrados.append({
             "item": r.item, "descricao": r.descricao, "nbs": list(r.nbs), "regime": r.regime,
             "reducao_percentual": r.reducao_percentual, "aliquotas_percentual": aliquotas(p, r.reducao_percentual),
-            "fundamento": r.fundamento, "texto_lei": r.texto_lei, "avisos": avisos})
+            "fundamento": r.fundamento, "texto_lei": r.texto_lei, "avisos": avisos, **info})
 
     avisos = []
+    if encontrados and all(e["confianca"] == "baixa" for e in encontrados):
+        avisos.append("CONFIANÇA BAIXA: o serviço pedido só casou em parte com os itens abaixo. Não afirme que ele "
+                      "está na lei sem o usuário confirmar o item.")
     if encontrados:
         avisos.append("Confirme que o serviço é exatamente o descrito em `descricao` e `texto_lei`: a busca é por "
                       "código ou palavras e pode trazer itens parecidos.")
