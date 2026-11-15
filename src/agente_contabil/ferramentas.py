@@ -3,6 +3,7 @@ import json
 
 from .busca import buscar_produto
 from .calculo import consultar
+from .ncm_tabela import identificar_ncm, verificar_ncm
 from .servicos import consultar_servico
 from .simples import consultar_simples
 from .texto_busca import avisos_da_consulta
@@ -19,6 +20,37 @@ FERRAMENTAS = [
                 "ano": {"type": "integer", "description": "Ano de referência, ex.: 2027."},
             },
             "required": ["ncm", "ano"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "identificar_ncm",
+        "description": "Acha o NCM de QUALQUER produto pela descrição oficial da tabela da Receita (não só dos que têm "
+                       "benefício), agrupado por posição. Traz o texto oficial, `confianca`, `ambigua` e "
+                       "`regra_cadastrada` (null = sem benefício cadastrado). A busca é por palavras: JULGUE se a "
+                       "descrição oficial faz sentido; reformule com termos técnicos se nada servir. Depois use "
+                       "`consultar_ncm` no NCM que o usuário confirmar.",
+        "strict": True,
+        "input_schema": {
+            "type": "object",
+            "properties": {"texto": {"type": "string", "description": "Nome ou descrição do produto."}},
+            "required": ["texto"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "verificar_ncm",
+        "description": "Confere se um NCM (ex.: o do ERP do lojista) combina com o produto que ele vende: devolve o texto "
+                       "oficial do NCM, a compatibilidade (alta/media/baixa) e candidatos alternativos; avisa se o NCM "
+                       "não existe na tabela oficial.",
+        "strict": True,
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "ncm": {"type": "string", "description": "NCM com 8 dígitos (pontos opcionais)."},
+                "produto": {"type": "string", "description": "Nome do produto como o usuário o descreve."},
+            },
+            "required": ["ncm", "produto"],
             "additionalProperties": False,
         },
     },
@@ -68,8 +100,14 @@ def _resposta_busca(texto: str) -> dict:
     """Candidatos + avisos (tema com lacuna conhecida, nada encontrado, confiança baixa)."""
     candidatos = buscar_produto(texto)
     avisos = avisos_da_consulta(texto)
+    ignoradas = next((c["palavras_ignoradas"] for c in candidatos if c.get("palavras_ignoradas")), [])
+    if ignoradas:
+        avisos.append(f"Nenhum item cobre tudo que foi pedido: IGNOREI as palavras {', '.join(ignoradas)}. "
+                      "Diga isso ao usuário e confirme o item antes de afirmar regime.")
     if not candidatos:
-        avisos.append("Nenhum produto encontrado na base. Não afirme regime: peça o NCM ao usuário.")
+        avisos.append("Nenhum produto encontrado na base. Se o NCM do produto não estiver nas listas de benefício, "
+                      "aplica-se a alíquota padrão (presunção): use `identificar_ncm` para achar o NCM oficial "
+                      "e `consultar_ncm`; não afirme regime sem isso.")
     elif all(c["confianca"] == "baixa" for c in candidatos):
         avisos.append("CONFIANÇA BAIXA: nenhum candidato cobre o que foi pedido (veja palavras_sem_correspondencia). "
                       "Não afirme regime sem o usuário confirmar o item.")
@@ -81,6 +119,11 @@ def executar(nome: str, entrada: dict) -> tuple[str, bool]:
     try:
         if nome == "consultar_ncm":
             r = consultar(entrada["ncm"], int(entrada["ano"]))
+            return json.dumps(r, ensure_ascii=False), "erro" in r
+        if nome == "identificar_ncm":
+            return json.dumps(identificar_ncm(entrada["texto"]), ensure_ascii=False), False
+        if nome == "verificar_ncm":
+            r = verificar_ncm(entrada["ncm"], entrada["produto"])
             return json.dumps(r, ensure_ascii=False), "erro" in r
         if nome == "consultar_servico":
             r = consultar_servico(entrada["texto"], int(entrada["ano"]))

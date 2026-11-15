@@ -10,6 +10,7 @@ Como decide (nada de 'qualquer palavra em comum'):
 """
 import csv
 import math
+from itertools import combinations
 from functools import lru_cache
 from pathlib import Path
 
@@ -17,7 +18,11 @@ from . import config
 from .normalizacao import lista_tokens, normalizar_texto, radical
 
 BONUS_INICIO = 1.5
+DESCONTO_SINONIMO = 0.75  # palavra que existe na base: casar pela palavra vale mais que pelo sinônimo
 LIMITE_ALTA, LIMITE_MEDIA = 0.999, 0.6
+
+
+_EXIBIR: dict[str, str] = {}  # radical -> palavra como está no arquivo (para mostrar 'gallus', não 'gallu')
 
 
 @lru_cache(maxsize=1)
@@ -31,6 +36,9 @@ def sinonimos() -> dict[str, frozenset[str]]:
         for linha in csv.DictReader(f, delimiter=";"):
             palavras = [linha["termo"], *linha["equivalentes"].split(",")]
             grupo = frozenset(radical(p) for texto in palavras for p in normalizar_texto(texto).split())
+            for texto in palavras:
+                for p in normalizar_texto(texto).split():
+                    _EXIBIR.setdefault(radical(p), p)
             for r in grupo:
                 mapa[r] = mapa.get(r, frozenset()) | grupo
     return mapa
@@ -56,50 +64,116 @@ def avisos_da_consulta(consulta: str) -> list[str]:
     return saida
 
 
+class IndiceBusca:
+    """Índice de documentos (descrição, palavras extras). Construa uma vez e consulte várias."""
+
+    def __init__(self, docs: list[tuple[str, str]], genericas: frozenset[str] = frozenset(),
+                 modo_posicao: str = "inicio"):
+        """modo_posicao: 'inicio' = bônus para palavra nas 3 primeiras da descrição e confiança máxima
+        'média' se só aparece depois (texto corrido); 'principal' = bônus para qualquer palavra da descrição
+        principal (textos hierárquicos, como a NCM: o 'principal' reúne o nível mais específico e o início de
+        cada nível). Nos dois modos, palavra que só aparece fora do 'principal' é citação solta."""
+        self.genericas = genericas
+        self.modo_posicao = modo_posicao
+        self.principais = [[t for t in lista_tokens(d) if t not in genericas] for d, _ in docs]
+        self.todos = [set(p) | set(lista_tokens(e)) for p, (_, e) in zip(self.principais, docs)]
+        self.n = len(docs)
+        self.invertido: dict[str, list[int]] = {}
+        for i, conjunto in enumerate(self.todos):
+            for t in conjunto:
+                self.invertido.setdefault(t, []).append(i)
+
+    def _idf(self, t: str) -> float:
+        return math.log((self.n + 1) / (len(self.invertido.get(t, ())) + 1)) + 1
+
+    def buscar(self, consulta: str, apenas: list[int] | None = None):
+        """(resultados, palavras_sem_correspondencia). Com `apenas`, avalia só esses documentos e não
+        descarta os parciais (usado para conferir um item específico).
+
+        resultados: [{indice, pontos, cobertura, confianca, so_citacao, sinonimos}] do melhor ao pior."""
+        pergunta = [t for t in lista_tokens(consulta) if t not in self.genericas]
+        if not pergunta:
+            return [], []
+        grupo = sinonimos()
+        alternativas = {t: {t} | set(grupo.get(t, ())) for t in pergunta}
+        conhecidos = [t for t in pergunta if alternativas[t] & self.invertido.keys()]
+        desconhecidos = [t for t in pergunta if t not in conhecidos]
+        vocab = self.invertido.keys()
+        # peso base: o da própria palavra se existe nos documentos; senão o do sinônimo mais raro
+        peso = {t: self._idf(t) if t in vocab else max(self._idf(a) for a in alternativas[t] & vocab)
+                for t in conhecidos}
+        peso_desconhecido = self._idf("")  # raridade máxima: palavra que nenhum item conhece é bem distintiva
+        total = sum(peso.values()) + peso_desconhecido * len(desconhecidos)
+        original = {}
+        for p in normalizar_texto(consulta).split():
+            original.setdefault(radical(p), p)
+
+        candidatos = set(apenas) if apenas is not None else {
+            i for t in conhecidos for a in alternativas[t] for i in self.invertido.get(a, ())}
+        resultados = []
+        for i in sorted(candidatos):
+            conjunto = self.todos[i]
+            achados = [t for t in conhecidos if alternativas[t] & conjunto]
+            if not achados:
+                if apenas is not None:
+                    resultados.append({"indice": i, "pontos": 0.0, "cobertura": 0.0, "so_citacao": True,
+                                       "sinonimos": []})
+                continue
+            inicio = set(self.principais[i][:3]) if self.modo_posicao == "inicio" else set(self.principais[i])
+            # casou pela palavra: peso cheio; só por sinônimo: o peso do sinônimo (limitado ao da palavra)
+            w = {t: peso[t] if t in conjunto else
+                 min(peso[t], max(self._idf(x) for x in alternativas[t] & conjunto)) * (DESCONTO_SINONIMO if t in vocab else 1.0)
+                 for t in achados}
+            pontos = sum(w[t] * (BONUS_INICIO if alternativas[t] & inicio else 1.0) for t in achados)
+            cobertura = sum(w.values()) / total
+            resultados.append({
+                "indice": i, "pontos": pontos, "cobertura": cobertura,
+                # palavra só citada no meio/fim da descrição ("...para conservação de carne") não identifica
+                "so_citacao": not any(alternativas[t] & inicio for t in achados),
+                # transparência: palavra da pergunta que casou só por sinônimo ("frango→galinha")
+                "sinonimos": [f"{original.get(t, t)}→{_EXIBIR.get(x, x)}"
+                              for t in achados if t not in conjunto
+                              for x in [max(alternativas[t] & conjunto, key=self._idf)]]})
+
+        if apenas is None and any(r["cobertura"] >= LIMITE_ALTA for r in resultados):
+            resultados = [r for r in resultados if r["cobertura"] >= LIMITE_ALTA]  # alguém cobre tudo
+        for r in resultados:
+            nivel = ("alta" if r["cobertura"] >= LIMITE_ALTA
+                     else "media" if r["cobertura"] >= LIMITE_MEDIA else "baixa")
+            r["confianca"] = "media" if nivel == "alta" and r["so_citacao"] else nivel
+        resultados.sort(key=lambda r: (-round(r["cobertura"], 3), -r["pontos"]))
+        return resultados, [original.get(t, t) for t in desconhecidos]
+
+
+def _buscar_relaxado(self, consulta: str, max_descartes: int = 2):
+    """(resultados, sem_correspondencia, palavras_ignoradas).
+
+    Se nada cobre bem a pergunta ('leite longa vida': a NCM não tem 'longa vida'), tenta descartar até
+    `max_descartes` palavras, preferindo as do FIM (em português o modificador vem depois do substantivo).
+    Só aceita quem passa a cobrir tudo e NUNCA com confiança 'alta': diz quais palavras ignorou."""
+    resultados, sem = self.buscar(consulta)
+    if any(r["confianca"] in ("alta", "media") for r in resultados):
+        return resultados, sem, []
+    palavras: list[str] = []
+    for p in normalizar_texto(consulta).split():
+        r = lista_tokens(p)
+        if r and r[0] not in self.genericas and all(radical(q) != r[0] for q in palavras):
+            palavras.append(p)
+    for k in range(1, min(max_descartes, len(palavras) - 1) + 1):
+        for descartar in sorted(combinations(range(len(palavras)), k), key=lambda c: -sum(c)):
+            mantidas = [p for i, p in enumerate(palavras) if i not in descartar]
+            achados, sem2 = self.buscar(" ".join(mantidas))
+            if achados and achados[0]["confianca"] == "alta":
+                for a in achados:
+                    if a["confianca"] == "alta":
+                        a["confianca"] = "media"
+                return achados, sem2, [palavras[i] for i in descartar]
+    return resultados, sem, []
+
+
+IndiceBusca.buscar_relaxado = _buscar_relaxado
+
+
 def ranquear(consulta: str, docs: list[tuple[str, str]], genericas: frozenset[str] = frozenset()):
-    """docs = [(descrição, palavras extras)]. Devolve (resultados, palavras_sem_correspondencia).
-
-    resultados: [{indice, pontos, cobertura, confianca}] do melhor para o pior."""
-    pergunta = [t for t in lista_tokens(consulta) if t not in genericas]
-    if not pergunta:
-        return [], []
-    principais = [[t for t in lista_tokens(d) if t not in genericas] for d, _ in docs]
-    todos = [set(p) | set(lista_tokens(e)) for p, (_, e) in zip(principais, docs)]
-    df: dict[str, int] = {}
-    for conjunto in todos:
-        for t in conjunto:
-            df[t] = df.get(t, 0) + 1
-    n = len(docs)
-
-    def idf(t: str) -> float:
-        return math.log((n + 1) / (df.get(t, 0) + 1)) + 1
-
-    grupo = sinonimos()
-    alternativas = {t: {t} | set(grupo.get(t, ())) for t in pergunta}
-    conhecidos = [t for t in pergunta if alternativas[t] & df.keys()]
-    desconhecidos = [t for t in pergunta if t not in conhecidos]
-    peso = {t: max(idf(a) for a in alternativas[t] & df.keys()) for t in conhecidos}
-    peso_desconhecido = idf("")  # raridade máxima: palavra que nenhum item conhece é bem distintiva
-    total = sum(peso.values()) + peso_desconhecido * len(desconhecidos)
-
-    resultados = []
-    for i, conjunto in enumerate(todos):
-        achados = [t for t in conhecidos if alternativas[t] & conjunto]
-        if not achados:
-            continue
-        inicio = set(principais[i][:3])
-        pontos = sum(peso[t] * (BONUS_INICIO if alternativas[t] & inicio else 1.0) for t in achados)
-        cobertura = sum(peso[t] for t in achados) / total
-        # palavra só citada no meio/fim da descrição ("...para conservação de carne") não identifica o item
-        so_citacao = not any(alternativas[t] & inicio for t in achados)
-        resultados.append({"indice": i, "pontos": pontos, "cobertura": cobertura, "so_citacao": so_citacao})
-
-    if any(r["cobertura"] >= LIMITE_ALTA for r in resultados):  # alguém cobre tudo: parciais saem
-        resultados = [r for r in resultados if r["cobertura"] >= LIMITE_ALTA]
-    for r in resultados:
-        nivel = ("alta" if r["cobertura"] >= LIMITE_ALTA
-                 else "media" if r["cobertura"] >= LIMITE_MEDIA else "baixa")
-        r["confianca"] = "media" if nivel == "alta" and r["so_citacao"] else nivel
-    resultados.sort(key=lambda r: (-round(r["cobertura"], 3), -r["pontos"]))
-    originais = [p for p in normalizar_texto(consulta).split() if radical(p) in desconhecidos]
-    return resultados, originais
+    """Atalho para bases pequenas: monta o índice e consulta. Veja IndiceBusca.buscar."""
+    return IndiceBusca(docs, genericas).buscar(consulta)

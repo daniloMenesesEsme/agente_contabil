@@ -11,7 +11,7 @@ from pathlib import Path
 
 from . import config
 from .calculo import aliquotas, parametros
-from .texto_busca import ranquear
+from .texto_busca import IndiceBusca
 
 GENERICAS = frozenset({"servico", "prestacao"})  # (radicais) estão em quase toda descrição: não identificam
 
@@ -60,8 +60,10 @@ def buscar_servico_detalhado(consulta: str, limite: int = 5) -> list[tuple[Regra
         achadas = [r for r in carregar() if any(n.startswith(cod) or cod.startswith(n) for n in r.nbs)]
         return [(r, {"confianca": "alta", "cobertura": 1.0}) for r in achadas[:limite]]
     regras = carregar()
-    ranking, _ = ranquear(consulta, [(r.descricao, r.palavras_chave.replace(",", " ")) for r in regras], GENERICAS)
-    return [(regras[x["indice"]], {"confianca": x["confianca"], "cobertura": round(x["cobertura"], 2)})
+    indice = IndiceBusca([(r.descricao, r.palavras_chave.replace(",", " ")) for r in regras], GENERICAS)
+    ranking, _, ignoradas = indice.buscar_relaxado(consulta)
+    return [(regras[x["indice"]], {"confianca": x["confianca"], "cobertura": round(x["cobertura"], 2),
+                                   "sinonimos_usados": x["sinonimos"], "palavras_ignoradas": ignoradas})
             for x in ranking[:limite]]
 
 

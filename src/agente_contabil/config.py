@@ -14,6 +14,8 @@ ARQ_SERVICOS = DADOS / "regras_servicos.csv"
 ARQ_SIMPLES = DADOS / "simples_anexos.csv"
 ARQ_SINONIMOS = DADOS / "sinonimos.csv"
 ARQ_AVISOS_BUSCA = DADOS / "avisos_busca.csv"
+ARQ_NCM = DADOS / "ncm_tabela.csv"
+ARQ_NCM_META = DADOS / "ncm_tabela_meta.json"
 ARQ_PARAMETROS = DADOS / "parametros.json"
 ARQ_PROMPT = RAIZ / "prompts" / "sistema.md"
 

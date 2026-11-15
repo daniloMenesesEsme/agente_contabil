@@ -38,13 +38,22 @@ def test_sinonimo_do_arquivo_acha_o_termo_da_lei_e_corta_o_falso_candidato():
     assert "ave" in sinonimos()["frango"]
 
 
-def test_palavra_que_nenhum_item_conhece_derruba_a_confianca_e_e_informada(monkeypatch):
+def test_palavra_que_nenhum_item_conhece_e_ignorada_com_transparencia(monkeypatch):
     from agente_contabil import config
     monkeypatch.setattr(config, "ARQ_SINONIMOS", config.RAIZ / "nao_existe.csv")
     sinonimos.cache_clear()
     r = buscar_produto("carne de frango")
-    assert r[0]["ncm_prefixo"] == "0201"                       # ainda o melhor palpite...
-    assert r[0]["confianca"] == "baixa" and r[0]["palavras_sem_correspondencia"] == ["frango"]
+    assert r[0]["ncm_prefixo"] == "0201"
+    # nenhum item cobre "frango": ele é descartado, a confiança nunca fica "alta" e o usuário é avisado
+    assert r[0]["confianca"] == "media" and r[0]["palavras_ignoradas"] == ["frango"]
+
+
+def test_relaxamento_descarta_modificadores_do_fim_e_nunca_da_confianca_alta():
+    r = buscar_produto("leite achocolatado extra")
+    assert r[0]["descricao"].startswith("Leite") and r[0]["palavras_ignoradas"] == ["achocolatado", "extra"]
+    assert r[0]["confianca"] == "media"
+    assert buscar_produto("achocolatado leite")[0]["palavras_ignoradas"] == ["achocolatado"]  # só descarta o necessário
+    assert buscar_produto("leite")[0]["palavras_ignoradas"] == []                              # cobre tudo: não relaxa
 
 
 def test_itens_com_mesma_descricao_viram_um_resultado_com_os_outros_ncms():
@@ -90,15 +99,11 @@ def test_tema_com_lacuna_conhecida_gera_aviso_da_busca():
     assert any("AVISO DE TESTE" in a for a in r["avisos"])
 
 
-def test_resposta_da_ferramenta_sem_candidato_ou_com_baixa_confianca_manda_nao_afirmar(monkeypatch):
-    from agente_contabil import config
+def test_resposta_da_ferramenta_sem_candidato_ou_com_palavras_ignoradas_manda_nao_afirmar():
     from agente_contabil.ferramentas import _resposta_busca, executar
     r = _resposta_busca("xyzzy")
-    assert r["candidatos"] == [] and any("peça o NCM" in a for a in r["avisos"])
-    monkeypatch.setattr(config, "ARQ_SINONIMOS", config.RAIZ / "nao_existe.csv")
-    from agente_contabil.texto_busca import sinonimos
-    sinonimos.cache_clear()
-    r = _resposta_busca("arroz integral xpto")
-    assert r["candidatos"] and any("CONFIANÇA BAIXA" in a for a in r["avisos"])
+    assert r["candidatos"] == [] and any("identificar_ncm" in a and "padrão" in a for a in r["avisos"])
+    r = _resposta_busca("leite achocolatado")
+    assert r["candidatos"] and any("IGNOREI as palavras achocolatado" in a for a in r["avisos"])
     saida, erro = executar("buscar_produto", {"texto": "leite"})
     assert not erro and "candidatos" in saida

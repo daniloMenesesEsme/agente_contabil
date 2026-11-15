@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from .busca import buscar_produto
 from .calculo import consultar
+from .ncm_tabela import identificar_ncm, verificar_ncm
 from .ferramentas import _resposta_busca
 from .servicos import consultar_servico
 from .simples import consultar_simples
@@ -36,6 +37,19 @@ def rota_ncm(ncm: str, ano: int | None = Query(None)):
 def rota_buscar(q: str = Query(..., min_length=2), completo: bool = Query(False)):
     """Lista de candidatos; com `completo=true`, {candidatos, avisos} (avisos de lacunas conhecidas)."""
     return _resposta_busca(q) if completo else buscar_produto(q)
+
+
+@app.get("/identificar")
+def rota_identificar(q: str = Query(..., min_length=2)):
+    return identificar_ncm(q)
+
+
+@app.get("/verificar")
+def rota_verificar(ncm: str, produto: str = Query(..., min_length=2)):
+    r = verificar_ncm(ncm, produto)
+    if "erro" in r:
+        raise HTTPException(400, r["erro"])
+    return r
 
 
 @app.get("/servico")

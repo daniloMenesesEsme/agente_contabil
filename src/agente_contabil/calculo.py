@@ -4,6 +4,7 @@ from functools import lru_cache
 
 from . import config
 from .normalizacao import normalizar_ncm, ncm_valido
+from .ncm_tabela import descricao_oficial
 from .regras import Regra, buscar_por_ncm
 
 
@@ -99,8 +100,13 @@ def consultar(ncm: str, ano: int | None = None) -> dict:
             avisos.append(f"Alguma alíquota de {ano} ainda não foi definida oficialmente (valor null).")
     if p.get("observacao"):
         avisos.append(p["observacao"])
+    oficial = descricao_oficial(ncm)  # None se a tabela oficial não estiver instalada
+    if oficial is not None and not oficial["existe"]:
+        avisos.insert(0, f"NCM NÃO CONSTA da tabela oficial vigente ({oficial['tabela']}): confira o código no "
+                         "cadastro do ERP e na nota fiscal do fornecedor antes de usar qualquer regime abaixo.")
 
     return {
+        "ncm_oficial": oficial,
         "enquadramento_a_confirmar": incompleto or indefinido,
         "ncm": normalizar_ncm(ncm),
         "descricao_regra": descricao,

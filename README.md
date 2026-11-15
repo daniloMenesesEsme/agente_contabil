@@ -95,6 +95,17 @@ uvicorn agente_contabil.api:app --reload --app-dir src   # abra http://127.0.0.1
      `dados/sinonimos.csv` (só equivalências estritas; ex.: frango = ave, porque a lei diz "aves") e
      `dados/avisos_busca.csv` (tema com lacuna conhecida, ex.: medicamentos, vira aviso). Sinônimo ruim induz
      a erro (um "remédio = medicamento" casava vacina veterinária e foi removido): acrescente com cuidado.
+   - **Tabela oficial da NCM** (`dados/ncm_tabela.csv`, 15.157 códigos, vigência e ato em
+     `dados/ncm_tabela_meta.json`): vem da Receita/Siscomex e é a base de `identificar_ncm` (acha o NCM de
+     QUALQUER produto, agrupado por posição, com `ambigua` e `confianca`), `verificar_ncm` (o NCM do ERP bate com o
+     produto? existe?) e do bloco `ncm_oficial` de `consultar_ncm`. Atualize quando sair nova Resolução Gecex:
+     `curl -L -o ncm.json "https://portalunico.siscomex.gov.br/classif/api/publico/nomenclatura/download/json?perfil=PUBLICO"`
+     e `python -I scripts/importar_ncm.py ncm.json` (o arquivo baixado é tratado como dado externo: só lido como JSON).
+     A tabela não define alíquota: o regime continua vindo só de `regras_ncm.csv`.
+   - **Limites da busca:** é por palavras, não por significado (a NCM não usa "refrigerante" para a bebida). O motor
+     usa radicais, peso por raridade, bônus para a descrição mais específica, desconto para sinônimo, e quando nada
+     cobre o pedido descarta palavras do fim e **diz quais ignorou** (confiança no máximo média). O agente deve
+     julgar o sentido e reformular com termos oficiais, sempre usando só NCMs devolvidos pela tabela.
 2. **`parametros.json`**: preencha a CBS de 2027+ quando a alíquota de referência for publicada.
 3. Preencha `cclasstrib` conforme a tabela oficial (Notas Técnicas da NF-e — Reforma Tributária).
 
