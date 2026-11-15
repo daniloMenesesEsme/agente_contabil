@@ -109,6 +109,28 @@ uvicorn agente_contabil.api:app --reload --app-dir src   # abra http://127.0.0.1
 2. **`parametros.json`**: preencha a CBS de 2027+ quando a alíquota de referência for publicada.
 3. Preencha `cclasstrib` conforme a tabela oficial (Notas Técnicas da NF-e — Reforma Tributária).
 
+## Revisão pelo contador
+
+`python scripts/gerar_planilha_revisao.py` gera `dados/revisao_contador.csv` (abre direto no Excel): **tudo que
+precisa de conferência, do mais arriscado ao menos**, com a coluna `o_que_conferir` e o `texto_lei` de cada linha.
+
+| Prioridade | O que é |
+|---|---|
+| 1 | Regime desconhecido: NCMs `a_confirmar` (conflito entre anexos ou anexo revogado) e a pergunta sobre medicamentos |
+| 2 | Vale só para o produto descrito (código incompleto, NCM dividido com anexo revogado), anexos sem regime, CBS 2027/2028 indefinida |
+| 3 | Exceções ("exceto"), tabelas do Simples/MEI, serviços sem NBS, sinônimos e avisos de busca |
+| 4 | Ressalvas da lei e serviços |
+| 5 | Regras sem alerta (conferência normal) |
+
+O contador preenche só `decisao` (`confirmar`, `corrigir` ou `excluir`), `regime_correto`
+(`aliquota_zero`, `reducao_60`, `reducao_30` ou `padrao`, obrigatório em `corrigir`) e `observacao_contador`.
+Depois: `python scripts/aplicar_revisao.py` **simula** (mostra o que faria e os erros) e
+`python scripts/aplicar_revisao.py --aplicar` grava em `regras_ncm.csv` e `regras_servicos.csv`
+(`validado=sim`). Regras de segurança: um `a_confirmar` não pode ser "confirmado" (precisa de regime), qualquer erro
+aborta tudo, e anexos, Simples/MEI, sinônimos, avisos e parâmetros **não** são aplicados automaticamente (saem na
+lista MANUAL). Depois de validadas, os geradores se recusam a sobrescrever as regras. Para começar de novo com a
+planilha, rode o gerador de novo (ela é refeita a partir dos dados atuais).
+
 ## Custos
 
 | Item | Custo |
