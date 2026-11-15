@@ -67,6 +67,55 @@ def test_ferramenta_erro_sinalizado():
 
 def test_extracao_anexos():
     from extrair_anexos_lc214 import extrair_linhas
-    texto = "Lei de 2025\nANEXO I\n1 Arroz 1006.20 e 1006.30\nANEXO VII\nItem 0401.10.10 leite"
-    out = extrair_linhas(texto)
-    assert [(o["anexo"], o["ncm"]) for o in out] == [("I", "1006.20"), ("I", "1006.30"), ("VII", "0401.10.10")]
+    texto = ("Lei de 2025\nconstantes do Anexo I desta Lei 1006.20\nANEXO I\n"
+             "1 Arroz 1006.20 e 1006.30\nPães 1905 e sucos 2009\nvigência em 2027, Lei nº 10.833/2003\n"
+             "ANEXO VII\nItem 0401.10.10 leite")
+    out = [(o["anexo"], o["ncm"]) for o in extrair_linhas(texto)]
+    assert out == [("I", "1006.20"), ("I", "1006.30"), ("I", "1905"), ("I", "2009"), ("VII", "0401.10.10")]
+
+
+def test_extracao_html(tmp_path):
+    from extrair_anexos_lc214 import extrair_linhas, ler_texto
+    html = ("<html><body><p>Texto da lei de 2025</p><p align=center><b>ANEXO&nbsp;I</b></p>"
+            "<table><tr><td>1</td><td>Arroz</td><td>1006.20, 1006.30 e 1006.40.00</td></tr></table>"
+            "</body></html>")
+    arq = tmp_path / "lc.htm"
+    arq.write_bytes(html.encode("latin-1"))
+    out = [o["ncm"] for o in extrair_linhas(ler_texto(arq))]
+    assert out == ["1006.20", "1006.30", "1006.40.00"]
+
+
+def test_titulos_anexos():
+    from extrair_anexos_lc214 import titulos_anexos
+    texto = "ANEXO I\n\nPRODUTOS DESTINADOS À ALIMENTAÇÃO\nArroz 1006.20\nANEXO II\nSERVIÇOS\nANEXO I\nOUTRO"
+    t = titulos_anexos(texto)
+    assert t["I"]["titulo"] == "PRODUTOS DESTINADOS À ALIMENTAÇÃO"
+    assert t["II"]["titulo"] == "SERVIÇOS"
+    # o segundo "ANEXO I" tem outro contexto: ganha chave própria em vez de se perder
+    assert t["I-2"] == {"anexo": "I", "titulo": "OUTRO", "tipo": "lc214"}
+
+
+def test_ressalva_e_texto_da_lei_acompanham_a_resposta():
+    r = consultar("03061100", 2026)
+    assert r["regime"] == "reducao_60"
+    assert any("exceção ou condição" in a for a in r["avisos"])
+    assert "exceto os produtos da subposição 0306.11" in r["texto_lei"]
+
+
+def test_codigo_incompleto_na_lei_exige_confirmar_o_enquadramento():
+    r = consultar("39269099", 2026)  # a regra é "3926.9": vale só para a bengala descrita
+    assert r["regime"] == "reducao_60" and r["enquadramento_a_confirmar"] is True
+    assert r["avisos"][0].startswith("ATENÇÃO: o benefício vale só para o produto descrito")
+    assert "alíquota padrão (total 1.0% em 2026)" in r["avisos"][0]
+
+
+def test_codigo_completo_nao_pede_confirmacao_de_enquadramento():
+    assert consultar("10063021", 2026)["enquadramento_a_confirmar"] is False
+
+
+def test_conflito_entre_anexos_nao_informa_aliquota():
+    r = consultar("21069090", 2026)
+    assert r["regime"] == "a_confirmar" and r["enquadramento_a_confirmar"] is True
+    assert r["aliquotas_percentual"] == {"cbs": None, "ibs_uf": None, "ibs_mun": None, "total": None}
+    assert r["avisos"][0].startswith("REGIME NÃO DEFINIDO")
+    assert not any("ainda não foi definida oficialmente" in a for a in r["avisos"])

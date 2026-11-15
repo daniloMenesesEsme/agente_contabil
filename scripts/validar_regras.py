@@ -12,8 +12,8 @@ ESPERADO = {"aliquota_zero": 100, "reducao_60": 60, "reducao_30": 30, "padrao": 
 def validar() -> list[str]:
     erros, regras = [], carregar()
     for r in regras:
-        if len(r.ncm_prefixo) not in (2, 4, 6, 8):
-            erros.append(f"{r.ncm_prefixo}: prefixo deve ter 2, 4, 6 ou 8 dígitos")
+        if len(r.ncm_prefixo) not in (2, 4, 5, 6, 7, 8):
+            erros.append(f"{r.ncm_prefixo}: prefixo deve ter 2, 4, 5, 6, 7 ou 8 dígitos")
         if r.regime not in REGIMES:
             erros.append(f"{r.ncm_prefixo}: regime desconhecido '{r.regime}'")
         if r.regime in ESPERADO and r.reducao_percentual != ESPERADO[r.regime]:

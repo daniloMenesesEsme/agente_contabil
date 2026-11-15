@@ -1,0 +1,24 @@
+anexo;titulo_oficial;regime;reducao_percentual;fundamento;validado;tipo
+I;PRODUTOS DESTINADOS À ALIMENTAÇÃO HUMANA SUBMETIDOS À REDUÇÃO A ZERO DAS ALÍQUOTAS DO IBS E DA CBS (EXCLUSIVE PRODUTOS HORTÍCOLAS, FRUTAS E OVOS, RELACIONADOS NO ANEXO XV);aliquota_zero;100;LC 214/2025, Anexo I;nao;ncm
+II;SERVIÇOS DE EDUCAÇÃO SUBMETIDOS À REDUÇÃO DE 60% (SESSENTA POR CENTO) DAS ALÍQUOTAS DO IBS E DA CBS;reducao_60;60;LC 214/2025, Anexo II;nao;servico
+III;SERVIÇOS DE SAÚDE SUBMETIDOS À REDUÇÃO DE 60% (SESSENTA POR CENTO) DAS ALÍQUOTAS DO IBS E DA CBS;reducao_60;60;LC 214/2025, Anexo III;nao;servico
+IV;DISPOSITIVOS MÉDICOS SUBMETIDOS À REDUÇÃO DE 60% (SESSENTA POR CENTO) DAS ALÍQUOTAS DO IBS E DA CBS;reducao_60;60;LC 214/2025, Anexo IV;nao;ncm
+V;DISPOSITIVOS DE ACESSIBILIDADE PRÓPRIOS PARA PESSOAS COM DEFICIÊNCIA SUBMETIDOS À REDUÇÃO DE 60% (SESSENTA POR CENTO) DAS ALÍQUOTAS DO IBS E DA CBS;reducao_60;60;LC 214/2025, Anexo V;nao;ncm
+VI;COMPOSIÇÕES PARA NUTRIÇÃO ENTERAL OU PARENTERAL E COMPOSIÇÕES ESPECIAIS E FÓRMULAS NUTRICIONAIS DESTINADAS ÀS PESSOAS COM ERROS INATOS DO METABOLISMO SUBMETIDAS À REDUÇÃO DE 60% (SESSENTA POR CENTO) DAS ALÍQUOTAS DO IBS E DA CBS;reducao_60;60;LC 214/2025, Anexo VI;nao;ncm
+VII;ALIMENTOS DESTINADOS AO CONSUMO HUMANO SUBMETIDOS À REDUÇÃO DE 60% (SESSENTA POR CENTO) DAS ALÍQUOTAS DO IBS E DA CBS;reducao_60;60;LC 214/2025, Anexo VII;nao;ncm
+VIII;PRODUTOS DE HIGIENE PESSOAL E LIMPEZA MAJORITARIAMENTE CONSUMIDOS POR FAMÍLIAS DE BAIXA RENDA SUBMETIDOS À REDUÇÃO DE 60% (SESSENTA POR CENTO) DAS ALÍQUOTAS DO IBS E DA CBS;reducao_60;60;LC 214/2025, Anexo VIII;nao;ncm
+IX;INSUMOS AGROPECUÁRIOS E AQUÍCOLAS SUBMETIDOS À REDUÇÃO DE 60% (SESSENTA POR CENTO) DAS ALÍQUOTAS DO IBS E DA CBS;reducao_60;60;LC 214/2025, Anexo IX;nao;ncm
+X;PRODUÇÕES NACIONAIS ARTÍSTICAS, CULTURAIS, DE EVENTOS, JORNALÍSTICAS E AUDIOVISUAIS SUBMETIDAS À REDUÇÃO DE 60% (SESSENTA POR CENTO) DAS ALÍQUOTAS DO IBS E DA CBS;reducao_60;60;LC 214/2025, Anexo X;nao;ncm
+XI;BENS E SERVIÇOS RELACIONADOS À SOBERANIA E À SEGURANÇA NACIONAL, À SEGURANÇA DA INFORMAÇÃO E À SEGURANÇA CIBERNÉTICA SUBMETIDOS À REDUÇÃO DE 60% (SESSENTA POR CENTO) DAS ALÍQUOTAS DO IBS E DA CBS;reducao_60;60;LC 214/2025, Anexo XI;nao;ncm
+XII;DISPOSITIVOS MÉDICOS SUBMETIDOS À REDUÇÃO A ZERO DAS ALÍQUOTAS DO IBS E DA CBS;aliquota_zero;100;LC 214/2025, Anexo XII;nao;ncm
+XIII;DISPOSITIVOS DE ACESSIBILIDADE PRÓPRIOS PARA PESSOAS COM DEFICIÊNCIA SUBMETIDOS À REDUÇÃO A ZERO DAS ALÍQUOTAS DO IBS E DA CBS;aliquota_zero;100;LC 214/2025, Anexo XIII;nao;ncm
+XIV;(Revogado pela Lei Complementar nº 227, de 2026) MEDICAMENTOS SUBMETIDOS À REDUÇÃO A ZERO DAS ALÍQUOTAS DO IBS E DA CBS;revogado;;LC 214/2025, Anexo XIV;nao;revogado
+XV;PRODUTOS HORTÍCOLAS, FRUTAS E OVOS SUBMETIDOS À REDUÇÃO DE 100% (CEM POR CENTO) DAS ALÍQUOTAS DO IBS E DA CBS;aliquota_zero;100;LC 214/2025, Anexo XV;nao;ncm
+XVI;LIMITE INFERIOR PARA FIXAÇÃO DA ALÍQUOTA PRÓPRIA EM PROPORÇÃO DA ALÍQUOTA DE REFERÊNCIA;a_definir;;LC 214/2025, Anexo XVI;nao;ncm
+XVII;BENS E SERVIÇOS SUJEITOS AO IMPOSTO SELETIVO;a_definir;;LC 214/2025, Anexo XVII;nao;ncm
+SN-I;Alíquotas e Partilha do Simples Nacional - Comércio (Vigência: 1º/1/2027 a 31/12/2028);a_definir;;LC 214/2025, Anexo I (trecho do Simples Nacional);nao;simples_mei
+SN-II;Alíquotas e Partilha do Simples Nacional - Indústria (Vigência: 1º/1/2027 a 31/12/2028);a_definir;;LC 214/2025, Anexo II (trecho do Simples Nacional);nao;simples_mei
+SN-III;Alíquotas e Partilha do Simples Nacional - Receitas de locação de bens móveis e de prestação de serviços não relacionados no § 5º-C do art. 18 desta Lei Complementar (Vigência: 1º/1/2027 a 31/12/2028);a_definir;;LC 214/2025, Anexo III (trecho do Simples Nacional);nao;simples_mei
+SN-IV;Alíquotas e Partilha do Simples Nacional - Receitas decorrentes da prestação de serviços relacionados no § 5º-C do art. 18 desta Lei Complementar (Vigência: 1º/1/2027 a 31/12/2028);a_definir;;LC 214/2025, Anexo IV (trecho do Simples Nacional);nao;simples_mei
+SN-V;Alíquotas e Partilha do Simples Nacional - Receitas decorrentes da prestação de serviços relacionados no § 5º-I do art. 18 desta Lei Complementar (Vigência: 1º/1/2027 a 31/12/2028);a_definir;;LC 214/2025, Anexo V (trecho do Simples Nacional);nao;simples_mei
+MEI-VII;Valores fixos do Microempreendedor Individual (MEI) (Vigência: 1º/1/2027 a 31/12/2028);a_definir;;LC 214/2025, Anexo VII (trecho do MEI);nao;simples_mei

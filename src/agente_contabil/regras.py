@@ -7,7 +7,8 @@ from pathlib import Path
 from . import config
 from .normalizacao import normalizar_ncm
 
-REGIMES = {"padrao", "aliquota_zero", "reducao_60", "reducao_30", "especifico", "isento"}
+# a_confirmar: a lei lista o NCM em anexos com regimes diferentes; nenhum foi escolhido automaticamente
+REGIMES = {"padrao", "aliquota_zero", "reducao_60", "reducao_30", "especifico", "isento", "a_confirmar"}
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,8 @@ class Regra:
     fundamento: str
     validado: bool
     observacao: str
+    texto_lei: str = ""   # linha literal do anexo da lei, para o contador conferir
+    ressalva: str = ""    # aviso quando a lei traz exceção/condição para o item
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -40,6 +43,8 @@ def _ler(caminho: Path) -> list[Regra]:
                 fundamento=linha["fundamento"].strip(),
                 validado=linha.get("validado", "").strip().lower() in ("sim", "s", "true", "1"),
                 observacao=linha.get("observacao", "").strip(),
+                texto_lei=linha.get("texto_lei", "").strip(),
+                ressalva=linha.get("ressalva", "").strip(),
             ))
     return regras
 

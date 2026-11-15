@@ -60,12 +60,27 @@ uvicorn agente_contabil.api:app --reload --app-dir src   # abra http://127.0.0.1
 
 ## ⚠️ Antes de usar com clientes
 
-1. **Os dados de `regras_ncm.csv` são EXEMPLOS** (`validado=nao`). Substitua pelos anexos oficiais:
-   - Baixe o PDF da LC 214/2025 para `dados/brutos/lc214.pdf`
-   - `python scripts/extrair_anexos_lc214.py dados/brutos/lc214.pdf`
-   - Revise `dados/brutos/extraido_lc214.csv` e copie as linhas para `regras_ncm.csv`
-   - Um contador marca `validado=sim` linha por linha
-   - `python scripts/validar_regras.py`
+1. **`regras_ncm.csv` foi gerado do texto da LC 214/2025 e NENHUMA regra está validada** (`validado=nao`).
+   - Fonte: a página do Planalto salva como HTML em `dados/brutos/Lcp 214.html` (pasta fora do Git).
+   - Pipeline (rode nesta ordem): `python scripts/extrair_anexos_lc214.py "dados/brutos/Lcp 214.html"` →
+     `python scripts/gerar_anexos_regimes.py "dados/brutos/Lcp 214.html"` → `python scripts/gerar_regras.py` →
+     `python scripts/validar_regras.py`. Os geradores se recusam a sobrescrever arquivos já revisados
+     (`--sobrescrever` força).
+   - O regime de cada anexo vem **só do título oficial** (`dados/anexos_regimes.csv`); título que não diz o regime
+     fica `a_definir`. Cada regra guarda o `texto_lei` (linha literal do anexo) e a `ressalva` quando a lei traz
+     "exceto"/"somente".
+   - Um contador revisa linha a linha e marca `validado=sim`. Itens que exigem atenção especial:
+     - **`a_confirmar` (7 NCMs):** a lei lista o NCM em dois anexos com regimes diferentes; nenhum foi escolhido
+       e a consulta não devolve alíquota.
+     - **Códigos incompletos (42 regras, 5 ou 7 dígitos, ex.: `8517.1`):** o benefício vale só para o produto
+       descrito, não para todo o código. A consulta marca `enquadramento_a_confirmar`.
+     - **Exceções ("exceto"):** 5 regras `padrao` protegem NCMs excluídos; 8 NCMs excluídos ficaram sem regra
+       (veja a saída de `gerar_regras.py`).
+     - **Medicamentos:** o Anexo XIV (medicamentos, redução a zero) foi **revogado pela LC 227/2026** e está fora
+       da base; a maioria dos medicamentos cai em "alíquota padrão presumida". Confirme a regra vigente.
+     - **Anexos XVI e XVII** (limite de alíquota própria; Imposto Seletivo) ficaram `a_definir` e fora das regras.
+   - **Não cobertos ainda:** regras do Simples Nacional/MEI (o texto cru está em
+     `dados/brutos/extraido_simples_lc214.csv`) e serviços sem NCM (Anexos II e III).
 2. **`parametros.json`**: preencha a CBS de 2027+ quando a alíquota de referência for publicada.
 3. Preencha `cclasstrib` conforme a tabela oficial (Notas Técnicas da NF-e — Reforma Tributária).
 
@@ -81,8 +96,10 @@ Cada resposta de `/perguntar` mostra os tokens gastos em `uso`.
 
 ## Próximos passos (roadmap)
 
-- [ ] Carregar os anexos oficiais completos e validar
-- [ ] Tabela cClassTrib oficial
+- [x] Carregar os anexos da LC 214 (gerados do texto da lei, pendentes de validação por contador)
+- [ ] Validar `regras_ncm.csv` (contador) e resolver os `a_confirmar`
+- [ ] Tabela cClassTrib oficial (a coluna `cclasstrib` existe, mas está vazia)
+- [ ] Regras de serviços (por NBS) e do Simples Nacional/MEI, estruturadas e validadas
 - [ ] Regimes específicos (combustíveis, serviços financeiros, imóveis etc.)
 - [ ] Imposto Seletivo (bebidas, cigarros etc.)
 - [ ] Cronograma completo 2029–2033 em `parametros.json`
