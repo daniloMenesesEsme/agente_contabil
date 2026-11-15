@@ -3,10 +3,13 @@ import json
 
 from .busca import buscar_produto
 from .calculo import consultar
+from .lote import analisar_lote, resumo
 from .ncm_tabela import identificar_ncm, verificar_ncm
 from .servicos import consultar_servico
 from .simples import consultar_simples
 from .texto_busca import avisos_da_consulta
+
+LIMITE_CONFERENCIA_CHAT = 30
 
 FERRAMENTAS = [
     {
@@ -20,6 +23,26 @@ FERRAMENTAS = [
                 "ano": {"type": "integer", "description": "Ano de referência, ex.: 2027."},
             },
             "required": ["ncm", "ano"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "conferir_produtos",
+        "description": "Confere uma LISTA PEQUENA de produtos (até 30) do ERP do usuário numa chamada só: para cada um diz se o NCM "
+                       "existe, se combina com a descrição, o regime e o que fazer, com os problemas primeiro. Para planilhas "
+                       "grandes, oriente o usuário a usar a conferência em lote (CLI `lote` ou API /lote).",
+        "strict": True,
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "produtos": {"type": "array", "maxItems": 30, "items": {
+                    "type": "object",
+                    "properties": {"descricao": {"type": "string", "description": "Nome do produto como no cadastro."},
+                                   "ncm": {"type": "string", "description": "NCM do cadastro (vazio se não tem)."}},
+                    "required": ["descricao", "ncm"], "additionalProperties": False}},
+                "ano": {"type": "integer", "description": "Ano de referência, ex.: 2027."},
+            },
+            "required": ["produtos", "ano"],
             "additionalProperties": False,
         },
     },
@@ -120,6 +143,12 @@ def executar(nome: str, entrada: dict) -> tuple[str, bool]:
         if nome == "consultar_ncm":
             r = consultar(entrada["ncm"], int(entrada["ano"]))
             return json.dumps(r, ensure_ascii=False), "erro" in r
+        if nome == "conferir_produtos":
+            resultados = analisar_lote(entrada["produtos"], int(entrada["ano"]), limite=LIMITE_CONFERENCIA_CHAT)
+            compactos = [{k: r[k] for k in ("linha", "descricao", "ncm_informado", "status", "o_que_fazer", "ncm_sugerido",
+                                            "regime", "aliquota_total_percentual", "cenarios", "regra_validada", "avisos")}
+                         for r in resultados]
+            return json.dumps({"resumo": resumo(resultados), "produtos": compactos}, ensure_ascii=False), False
         if nome == "identificar_ncm":
             return json.dumps(identificar_ncm(entrada["texto"]), ensure_ascii=False), False
         if nome == "verificar_ncm":

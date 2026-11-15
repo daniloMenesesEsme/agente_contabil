@@ -86,9 +86,10 @@ class IndiceBusca:
     def _idf(self, t: str) -> float:
         return math.log((self.n + 1) / (len(self.invertido.get(t, ())) + 1)) + 1
 
-    def buscar(self, consulta: str, apenas: list[int] | None = None):
+    def buscar(self, consulta: str, apenas: list[int] | None = None, ignorar_desconhecidas: bool = False):
         """(resultados, palavras_sem_correspondencia). Com `apenas`, avalia só esses documentos e não
-        descarta os parciais (usado para conferir um item específico).
+        descarta os parciais (usado para conferir um item específico). Com `ignorar_desconhecidas`, palavra
+        que nenhum item conhece (marca, modelo) é informada mas NÃO derruba a cobertura (conferência de ERP).
 
         resultados: [{indice, pontos, cobertura, confianca, so_citacao, sinonimos}] do melhor ao pior."""
         pergunta = [t for t in lista_tokens(consulta) if t not in self.genericas]
@@ -103,7 +104,9 @@ class IndiceBusca:
         peso = {t: self._idf(t) if t in vocab else max(self._idf(a) for a in alternativas[t] & vocab)
                 for t in conhecidos}
         peso_desconhecido = self._idf("")  # raridade máxima: palavra que nenhum item conhece é bem distintiva
-        total = sum(peso.values()) + peso_desconhecido * len(desconhecidos)
+        total = sum(peso.values()) + (0 if ignorar_desconhecidas else peso_desconhecido * len(desconhecidos))
+        if total == 0:  # só palavras desconhecidas: nada a comparar
+            return [], [t for t in pergunta]
         original = {}
         for p in normalizar_texto(consulta).split():
             original.setdefault(radical(p), p)
@@ -117,7 +120,7 @@ class IndiceBusca:
             if not achados:
                 if apenas is not None:
                     resultados.append({"indice": i, "pontos": 0.0, "cobertura": 0.0, "so_citacao": True,
-                                       "sinonimos": []})
+                                       "sinonimos": [], "cabeca": False})
                 continue
             inicio = set(self.principais[i][:3]) if self.modo_posicao == "inicio" else set(self.principais[i])
             # casou pela palavra: peso cheio; só por sinônimo: o peso do sinônimo (limitado ao da palavra)
@@ -128,6 +131,8 @@ class IndiceBusca:
             cobertura = sum(w.values()) / total
             resultados.append({
                 "indice": i, "pontos": pontos, "cobertura": cobertura,
+                # o substantivo principal (1ª palavra com conteúdo da pergunta) casou? em português ele vem primeiro
+                "cabeca": pergunta[0] in achados,
                 # palavra só citada no meio/fim da descrição ("...para conservação de carne") não identifica
                 "so_citacao": not any(alternativas[t] & inicio for t in achados),
                 # transparência: palavra da pergunta que casou só por sinônimo ("frango→galinha")
@@ -145,13 +150,13 @@ class IndiceBusca:
         return resultados, [original.get(t, t) for t in desconhecidos]
 
 
-def _buscar_relaxado(self, consulta: str, max_descartes: int = 2):
+def _buscar_relaxado(self, consulta: str, max_descartes: int = 2, ignorar_desconhecidas: bool = False):
     """(resultados, sem_correspondencia, palavras_ignoradas).
 
     Se nada cobre bem a pergunta ('leite longa vida': a NCM não tem 'longa vida'), tenta descartar até
     `max_descartes` palavras, preferindo as do FIM (em português o modificador vem depois do substantivo).
     Só aceita quem passa a cobrir tudo e NUNCA com confiança 'alta': diz quais palavras ignorou."""
-    resultados, sem = self.buscar(consulta)
+    resultados, sem = self.buscar(consulta, ignorar_desconhecidas=ignorar_desconhecidas)
     if any(r["confianca"] in ("alta", "media") for r in resultados):
         return resultados, sem, []
     palavras: list[str] = []
@@ -162,7 +167,7 @@ def _buscar_relaxado(self, consulta: str, max_descartes: int = 2):
     for k in range(1, min(max_descartes, len(palavras) - 1) + 1):
         for descartar in sorted(combinations(range(len(palavras)), k), key=lambda c: -sum(c)):
             mantidas = [p for i, p in enumerate(palavras) if i not in descartar]
-            achados, sem2 = self.buscar(" ".join(mantidas))
+            achados, sem2 = self.buscar(" ".join(mantidas), ignorar_desconhecidas=ignorar_desconhecidas)
             if achados and achados[0]["confianca"] == "alta":
                 for a in achados:
                     if a["confianca"] == "alta":

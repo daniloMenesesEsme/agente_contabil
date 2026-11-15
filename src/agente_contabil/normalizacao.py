@@ -41,11 +41,15 @@ def radical(palavra: str) -> str:
     return palavra
 
 
+# Quantidades e medidas do ERP ("5kg", "500ml", "1l", "12un", "2025") não identificam o produto: descartadas.
+RE_QUANTIDADE = re.compile(r"^\d+(?:kg|g|mg|l|lt|ml|cl|un|und|cx|pct|pc|m|cm|mm|m2|m3|gr|w|v|gb|mb|tb)?$")
+
+
 def lista_tokens(texto: str) -> list[str]:
     """Radicais das palavras com conteúdo, na ordem em que aparecem e sem repetir."""
     vistos: list[str] = []
     for p in normalizar_texto(texto).split():
-        if len(p) > 1 and p not in STOPWORDS and radical(p) not in vistos:
+        if len(p) > 1 and p not in STOPWORDS and not RE_QUANTIDADE.match(p) and radical(p) not in vistos:
             vistos.append(radical(p))
     return vistos
 

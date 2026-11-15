@@ -9,10 +9,22 @@ from .busca import buscar_produto
 from .calculo import consultar
 from .ncm_tabela import identificar_ncm, verificar_ncm
 from .ferramentas import _resposta_busca
+from .lote import LIMITE_ITENS_API, analisar_lote, resumo
 from .servicos import consultar_servico
 from .simples import consultar_simples
 
 app = FastAPI(title="Agente Contábil — IBS/CBS", version="0.1.0")
+
+
+class ItemLote(BaseModel):
+    descricao: str = ""
+    ncm: str = ""
+    codigo: str = ""
+
+
+class Lote(BaseModel):
+    itens: list[ItemLote]
+    ano: int | None = None
 
 
 class Pergunta(BaseModel):
@@ -66,6 +78,16 @@ def rota_simples(anexo: str = Query("")):
     if "erro" in r:
         raise HTTPException(400, r["erro"])
     return r
+
+
+@app.post("/lote")
+def rota_lote(lote: Lote):
+    """Confere uma lista de produtos do ERP (descrição + NCM). Sem IA: os dados não saem do servidor."""
+    try:
+        resultados = analisar_lote([i.model_dump() for i in lote.itens], lote.ano, LIMITE_ITENS_API)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"resumo": resumo(resultados), "itens": resultados}
 
 
 @app.post("/perguntar")

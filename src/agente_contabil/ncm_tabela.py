@@ -103,11 +103,20 @@ def _folhas_candidatas(texto: str) -> tuple[list[dict], list[str], list[str]]:
     """NCMs de 8 dígitos que casam com o texto, do melhor ao pior (sem agrupar), + sem correspondência
     + palavras ignoradas pelo relaxamento."""
     indice, folhas = _indice()
-    ranking, sem, ignoradas = indice.buscar_relaxado(texto)
+    ranking, sem, ignoradas = indice.buscar_relaxado(texto, ignorar_desconhecidas=True)
     return [{"ncm": folhas[r["indice"]].codigo, "descricao_completa": folhas[r["indice"]].completa,
              "confianca": r["confianca"], "cobertura": round(r["cobertura"], 2), "pontos": r["pontos"],
              "sinonimos_usados": r["sinonimos"], "regra_cadastrada": _regra_resumida(folhas[r["indice"]].codigo)}
             for r in ranking], sem, ignoradas
+
+
+def candidatos_por_descricao(texto: str, limite: int = 3) -> list[dict]:
+    """Lista simples dos melhores NCMs (8 dígitos) para a descrição: [{ncm, descricao, confianca}]."""
+    if not disponivel() or not (texto or "").strip():
+        return []
+    folhas, _, _ = _folhas_candidatas(texto)
+    return [{"ncm": f["ncm"], "descricao": f["descricao_completa"].split(" > ")[-1], "confianca": f["confianca"]}
+            for f in folhas[:limite]]
 
 
 def identificar_ncm(texto: str, limite_grupos: int = 5) -> dict:
@@ -177,8 +186,11 @@ def verificar_ncm(ncm: str, produto: str) -> dict:
                 "candidatos_alternativos": [], "avisos": avisos}
     indice, folhas = _indice()
     posicao = next(i for i, n in enumerate(folhas) if normalizar_ncm(n.codigo) == codigo)
-    resultados, sem = indice.buscar(produto, apenas=[posicao])
-    compat = resultados[0]["confianca"] if resultados and resultados[0]["cobertura"] > 0 else "baixa"
+    resultados, sem = indice.buscar(produto, apenas=[posicao], ignorar_desconhecidas=True)
+    cobertura = round(resultados[0]["cobertura"], 2) if resultados else 0.0
+    compat = resultados[0]["confianca"] if resultados and cobertura > 0 else "baixa"
+    if compat == "baixa" and resultados and resultados[0].get("cabeca"):
+        compat = "media"  # o substantivo principal casa: o resto são modificadores ("refinado", "orgânico")
     alternativos = [] if compat == "alta" else [
         {k: v for k, v in c.items() if k != "pontos"} for c in _folhas_candidatas(produto)[0]
         if c["ncm"] != oficial["codigo"]][:3]
@@ -188,5 +200,5 @@ def verificar_ncm(ncm: str, produto: str) -> dict:
     else:
         avisos.append("A descrição bate com o NCM, mas a conferência é por palavras: a classificação correta é "
                       "responsabilidade do contador/fornecedor.")
-    return {**base, "compatibilidade": compat, "palavras_do_produto_sem_correspondencia": sem,
+    return {**base, "compatibilidade": compat, "cobertura": cobertura, "palavras_do_produto_sem_correspondencia": sem,
             "candidatos_alternativos": alternativos, "avisos": avisos}

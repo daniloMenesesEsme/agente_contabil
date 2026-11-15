@@ -115,6 +115,30 @@ uvicorn agente_contabil.api:app --reload --app-dir src   # abra http://127.0.0.1
 2. **`parametros.json`**: preencha a CBS de 2027+ quando a alíquota de referência for publicada.
 3. Preencha `cclasstrib` conforme a tabela oficial (Notas Técnicas da NF-e — Reforma Tributária).
 
+## Conferência em lote da planilha do ERP
+
+`python -m agente_contabil.cli lote produtos_erp.csv --ano 2027` confere **cada produto** da lista exportada do ERP
+(descrição + NCM; opcional: código) e grava `produtos_erp_conferido.csv` (abre direto no Excel) com os **problemas
+primeiro**. Sem IA: a lista de produtos não sai do computador. Aceita CSV com `;`, `,` ou tabulação, em UTF-8 ou
+Latin-1 (salve a planilha do Excel como "CSV"); as colunas são reconhecidas pelo nome ("Descrição do Produto",
+"NCM/SH", "Cód. Produto"...) ou informadas com `--col-descricao` e `--col-ncm`. Até 5.000 itens (cerca de 40 s por mil).
+
+| Status | Significa |
+|---|---|
+| `NCM_INEXISTENTE` | Não existe na tabela oficial vigente (digitado errado ou desatualizado); traz sugestões pela descrição |
+| `NCM_SEM_ZERO` | 7 dígitos que viram um NCM válido com um `0` à esquerda: o Excel come esse zero |
+| `NCM_NAO_CONFIRMADO` | A descrição não combina com o texto oficial do NCM. **Não é prova de erro**: a NCM usa termo técnico ("refrigerante" é "águas ... adicionadas de açúcar"). Compare com `descricao_oficial_ncm` |
+| `NCM_INCOMPLETO` | Menos de 8 dígitos |
+| `REGIME_A_CONFIRMAR` | O regime não é único (vale só para um produto específico, conflito entre anexos, medicamentos) |
+| `SEM_NCM` | Sem NCM; traz sugestões pela descrição |
+| `CONFERIR` | Provavelmente confere, mas há ressalva da lei ou a conferência foi parcial |
+| `OK_SEM_BENEFICIO` / `OK_COM_BENEFICIO` | NCM existe e confere; sem benefício cadastrado (presunção de alíquota padrão) ou com o regime cadastrado |
+
+Tamanhos ("5kg", "1L"), marcas e palavras de enchimento do ERP ("tipo", "tradicional", "pacote") não derrubam a
+conferência; o substantivo principal do produto precisa casar com o NCM. `OK` quer dizer "confere pelas palavras":
+a classificação final é do contador ou do fornecedor, e as regras seguem sem validação. A API tem `POST /lote`
+(JSON, até 1.000 itens) e o agente tem a ferramenta `conferir_produtos` (até 30 itens por chamada).
+
 ## Revisão pelo contador
 
 `python scripts/gerar_planilha_revisao.py` gera `dados/revisao_contador.csv` (abre direto no Excel): **tudo que
@@ -159,4 +183,5 @@ Cada resposta de `/perguntar` mostra os tokens gastos em `uso`.
 - [ ] Imposto Seletivo (bebidas, cigarros etc.)
 - [ ] Cronograma completo 2029–2033 em `parametros.json`
 - [ ] Interface: página web simples ou WhatsApp
-- [ ] Histórico de conversa e importação de planilha de produtos (lote de NCMs)
+- [x] Importação da planilha de produtos do ERP (conferência em lote de NCMs)
+- [ ] Histórico de conversa; lote com upload de Excel (.xlsx) pela interface
