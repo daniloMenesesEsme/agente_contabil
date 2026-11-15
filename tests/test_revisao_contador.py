@@ -1,7 +1,7 @@
 import csv
 
 from aplicar_revisao import aplicar
-from gerar_planilha_revisao import COLUNAS, categoria_regra, linhas_revisao
+from gerar_planilha_revisao import COLUNAS, _tem_decisoes, categoria_regra, linhas_revisao, ncms_fora_da_tabela
 
 
 def _r(prefixo, regime="reducao_60", fundamento="LC 214/2025, Anexo IV", ressalva="", outros="", obs="", validado="nao"):
@@ -92,3 +92,26 @@ def test_planilha_gerada_abre_no_excel(tmp_path):
         w = csv.DictWriter(f, fieldnames=g.COLUNAS, delimiter=";")
         w.writeheader()
     assert destino.read_bytes().startswith(b"\xef\xbb\xbf") and destino.read_text(encoding="utf-8-sig").startswith("prioridade;")
+
+
+def test_ncms_fora_da_tabela_oficial_viram_item_de_prioridade_2():
+    regras = [_r("10063021"), _r("100630"), _r("28273998"), _r("8517")]
+    fora = ncms_fora_da_tabela(regras, ["1006.30.21", "8517.13.00"])
+    assert [r["ncm_prefixo"] for r in fora] == ["28273998"]   # prefixos de códigos vigentes são aceitos
+    assert ncms_fora_da_tabela(regras, []) == []              # sem tabela, não acusa nada
+    linhas = linhas_revisao(regras, [], [], [], [], [], {}, (), fora)
+    (item,) = [l for l in linhas if l["tipo_dado"] == "ncm_tabela"]
+    assert (item["prioridade"], item["categoria"], item["chave"]) == (2, "ncm_fora_da_tabela_oficial", "28273998")
+    assert "NÃO existe na tabela oficial" in item["o_que_conferir"]
+
+
+def test_planilha_com_decisoes_nao_e_sobrescrita(tmp_path):
+    arq = tmp_path / "rev.csv"
+    with open(arq, "w", encoding="utf-8-sig", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=COLUNAS, delimiter=";"); w.writeheader()
+        w.writerow({**{c: "" for c in COLUNAS}, "decisao": "confirmar"})
+    assert _tem_decisoes(arq) is True
+    with open(arq, "w", encoding="utf-8-sig", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=COLUNAS, delimiter=";"); w.writeheader()
+        w.writerow({c: "" for c in COLUNAS})
+    assert _tem_decisoes(arq) is False and _tem_decisoes(tmp_path / "nao_existe.csv") is False

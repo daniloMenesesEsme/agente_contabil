@@ -117,7 +117,7 @@ precisa de conferência, do mais arriscado ao menos**, com a coluna `o_que_confe
 | Prioridade | O que é |
 |---|---|
 | 1 | Regime desconhecido: NCMs `a_confirmar` (conflito entre anexos ou anexo revogado) e a pergunta sobre medicamentos |
-| 2 | Vale só para o produto descrito (código incompleto, NCM dividido com anexo revogado), anexos sem regime, CBS 2027/2028 indefinida |
+| 2 | Vale só para o produto descrito (código incompleto, NCM dividido com anexo revogado), NCM que não existe na tabela oficial, anexos sem regime, CBS 2027/2028 indefinida |
 | 3 | Exceções ("exceto"), tabelas do Simples/MEI, serviços sem NBS, sinônimos e avisos de busca |
 | 4 | Ressalvas da lei e serviços |
 | 5 | Regras sem alerta (conferência normal) |
@@ -128,8 +128,9 @@ Depois: `python scripts/aplicar_revisao.py` **simula** (mostra o que faria e os 
 `python scripts/aplicar_revisao.py --aplicar` grava em `regras_ncm.csv` e `regras_servicos.csv`
 (`validado=sim`). Regras de segurança: um `a_confirmar` não pode ser "confirmado" (precisa de regime), qualquer erro
 aborta tudo, e anexos, Simples/MEI, sinônimos, avisos e parâmetros **não** são aplicados automaticamente (saem na
-lista MANUAL). Depois de validadas, os geradores se recusam a sobrescrever as regras. Para começar de novo com a
-planilha, rode o gerador de novo (ela é refeita a partir dos dados atuais).
+lista MANUAL). Depois de validadas, os geradores se recusam a sobrescrever as regras. O gerador da planilha **recusa
+refazê-la se já houver decisões preenchidas** (`--sobrescrever` força). `python scripts/validar_e_preencher_ncm.py` audita as
+bases (exceções indevidas, NCMs fora da tabela oficial, linhas repetidas do Simples) e grava só em `dados/validacao/`.
 
 ## Custos
 

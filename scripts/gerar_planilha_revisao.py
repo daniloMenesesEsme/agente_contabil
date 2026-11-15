@@ -1,7 +1,9 @@
 """Gera dados/revisao_contador.csv: tudo que um contador precisa conferir, do MAIS ARRISCADO ao menos.
 
 Uso:
-  python scripts/gerar_planilha_revisao.py
+  python scripts/gerar_planilha_revisao.py [--sobrescrever]
+
+Recusa refazer a planilha se ela já tiver decisões do contador preenchidas (--sobrescrever força).
 
 Abre direto no Excel (UTF-8 com BOM, separador ';'). O contador preenche só as 3 últimas colunas:
   decisao          confirmar | corrigir | excluir   (vazio = pendente)
@@ -58,7 +60,17 @@ def categoria_regra(r: dict) -> tuple[int, str, str]:
     return 5, "regra_sem_alerta", "Confira regime, redução e fundamento com o texto da lei."
 
 
-def linhas_revisao(regras, servicos, anexos, simples, sinonimos, avisos, parametros, excecoes=()) -> list[dict]:
+def ncms_fora_da_tabela(regras: list[dict], codigos_tabela: list[str]) -> list[dict]:
+    """Regras cujo prefixo não existe (nem como prefixo de código vigente) na tabela oficial da NCM."""
+    validos: set[str] = set()
+    for codigo in codigos_tabela:
+        digitos = "".join(c for c in codigo if c.isdigit())
+        validos.update(digitos[:n] for n in range(2, len(digitos) + 1))
+    return [r for r in regras if r["ncm_prefixo"] and r["ncm_prefixo"] not in validos] if validos else []
+
+
+def linhas_revisao(regras, servicos, anexos, simples, sinonimos, avisos, parametros, excecoes=(),
+                   fora_da_tabela=()) -> list[dict]:
     """Pura (sem arquivos). Cada argumento é a lista de dicts do CSV correspondente (parametros: dict do JSON)."""
     saida = []
     for r in regras:
@@ -67,6 +79,12 @@ def linhas_revisao(regras, servicos, anexos, simples, sinonimos, avisos, paramet
             conferir += f" Ressalva: {r['ressalva'][:200]}"
         saida.append(_linha(prioridade, categoria, "regra_ncm", r["ncm_prefixo"], r["descricao"], r["regime"],
                             r["reducao_percentual"], r["fundamento"], conferir, r["texto_lei"]))
+    for r in fora_da_tabela:  # código que não existe na tabela oficial vigente: alterado ou revogado?
+        saida.append(_linha(2, "ncm_fora_da_tabela_oficial", "ncm_tabela", r["ncm_prefixo"], r["descricao"], r["regime"],
+                            r["reducao_percentual"], r["fundamento"],
+                            "O código NÃO existe na tabela oficial vigente da NCM: foi alterado ou revogado? Informe o NCM "
+                            "atual em observacao_contador (a correção do código é manual; a decisão sobre o regime vai na "
+                            "linha da regra).", r["texto_lei"]))
     com_regra = {r["ncm_prefixo"] for r in regras}
     vistos = set()
     for e in excecoes:  # NCM excluído por "exceto" que ficou SEM regra (não há benefício a proteger)
@@ -128,12 +146,24 @@ def _csv(caminho: Path) -> list[dict]:
         return list(csv.DictReader(f, delimiter=";"))
 
 
-def main() -> None:
+def _tem_decisoes(caminho: Path) -> bool:
+    if not caminho.exists():
+        return False
+    with open(caminho, encoding="utf-8-sig", newline="") as f:
+        return any((l.get("decisao") or "").strip() for l in csv.DictReader(f, delimiter=";"))
+
+
+def main(sobrescrever: bool = False) -> None:
+    if _tem_decisoes(DESTINO) and not sobrescrever:
+        raise SystemExit(f"{DESTINO} já tem decisões do contador. Refazer apagaria o trabalho dele: use "
+                         "--sobrescrever só se tiver certeza (ou aplique antes com aplicar_revisao.py).")
     parametros = json.loads((DADOS / "parametros.json").read_text(encoding="utf-8"))
-    linhas = linhas_revisao(_csv(DADOS / "regras_ncm.csv"), _csv(DADOS / "regras_servicos.csv"),
+    regras = _csv(DADOS / "regras_ncm.csv")
+    fora = ncms_fora_da_tabela(regras, [l["codigo"] for l in _csv(DADOS / "ncm_tabela.csv")])
+    linhas = linhas_revisao(regras, _csv(DADOS / "regras_servicos.csv"),
                             _csv(DADOS / "anexos_regimes.csv"), _csv(DADOS / "simples_anexos.csv"),
                             _csv(DADOS / "sinonimos.csv"), _csv(DADOS / "avisos_busca.csv"), parametros,
-                            _csv(DADOS / "brutos" / "excecoes.csv"))
+                            _csv(DADOS / "brutos" / "excecoes.csv"), fora)
     with open(DESTINO, "w", encoding="utf-8-sig", newline="") as f:
         w = csv.DictWriter(f, fieldnames=COLUNAS, delimiter=";")
         w.writeheader()
@@ -145,4 +175,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    main("--sobrescrever" in sys.argv)
